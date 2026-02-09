@@ -1,0 +1,440 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Global mossy + foggy + grainy background (enhanced with animated shapes + particles) */
+  html, body, #root {
+    height: 100%;
+  }
+
+  :root {
+    --bg-accent: rgba(80,152,115,0.18);
+    --bg-accent-2: rgba(139,92,246,0.12);
+    --fog-blur: 18px;
+    --fog-opacity: 0.95;
+    --grain-opacity: 0.85;
+    --particle-speed: 160s;
+  }
+
+  body {
+    /* Multi-layer base for depth */
+    background-color: #071229;
+    background-image:
+      radial-gradient(circle at 25% 20%, rgba(72,190,170,0.06) 0%, transparent 20%),
+      radial-gradient(circle at 80% 30%, rgba(139,92,246,0.10) 0%, transparent 30%),
+      linear-gradient(135deg, #031224 0%, #0f322a 30%, #3f2b5b 100%),
+      conic-gradient(from 180deg at 50% 50%, rgba(255,255,255,0.01), transparent 20%);
+    background-repeat: no-repeat;
+    background-size: cover;
+    color-scheme: dark;
+    color: #E6F6EB;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Ensure user text selection is readable (strong contrast) */
+  ::selection {
+    background: rgba(59,130,246,0.20);
+    color: #000000;
+  }
+  ::-moz-selection {
+    background: rgba(59,130,246,0.20);
+    color: #000000;
+  }
+
+  /* Large soft shapes that slowly float to add organic motion */
+  html::before {
+    content: "";
+    position: fixed;
+    inset: -10% -20% -10% -20%;
+    pointer-events: none;
+    z-index: 0;
+    background: radial-gradient(circle at 10% 80%, rgba(34,197,94,0.12), transparent 22%),
+                radial-gradient(circle at 85% 10%, rgba(139,92,246,0.08), transparent 30%);
+    filter: blur(60px) saturate(120%);
+    opacity: 0.95;
+    transform: translate3d(0,0,0);
+    animation: floatShapes 60s linear infinite;
+    mix-blend-mode: screen;
+  }
+
+  /* Subtle particle/vein layer (SVG) that slowly pans */
+  html::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='800'><circle cx='120' cy='200' r='2' fill='white' fill-opacity='0.06'/><circle cx='240' cy='80' r='3' fill='white' fill-opacity='0.04'/><circle cx='400' cy='340' r='2' fill='white' fill-opacity='0.05'/><circle cx='600' cy='420' r='2' fill='white' fill-opacity='0.03'/><circle cx='700' cy='120' r='3' fill='white' fill-opacity='0.04'/></svg>");
+    background-repeat: repeat;
+    background-size: 800px 800px;
+    opacity: 0.10;
+    animation: particlesPan var(--particle-speed) linear infinite;
+    mix-blend-mode: overlay;
+  }
+
+  /* Fog and vignette for atmosphere */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    background:
+      radial-gradient(circle at 60% 40%, rgba(255,255,255,0.04), transparent 20%),
+      linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.36)),
+      radial-gradient(ellipse at center, rgba(0,0,0,0.25), transparent 60%);
+    backdrop-filter: blur(var(--fog-blur));
+    opacity: var(--fog-opacity);
+  }
+
+  /* Animated grain / film effect */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256'><filter id='noise'><feTurbulence type='fractalNoise' baseFrequency='1.8' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23noise)' opacity='0.16' /></svg>");
+    background-repeat: repeat;
+    mix-blend-mode: overlay;
+    opacity: var(--grain-opacity);
+    animation: grainShift 25s linear infinite;
+  }
+
+  /* Slow animation keyframes */
+  @keyframes floatShapes {
+    0% { transform: translate3d(-6%, -2%, 0) scale(1); }
+    50% { transform: translate3d(6%, 3%, 0) scale(1.03); }
+    100% { transform: translate3d(-6%, -2%, 0) scale(1); }
+  }
+  @keyframes particlesPan {
+    0% { background-position: 0 0; }
+    100% { background-position: 2000px 2000px; }
+  }
+  @keyframes grainShift {
+    0% { background-position: 0 0; }
+    100% { background-position: 600px 600px; }
+  }
+
+  /* Ensure UI sits above the overlays */
+  #root > * {
+    position: relative;
+    z-index: 3;
+  }
+}
+
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors;
+  }
+  .btn-primary {
+    @apply btn bg-primary-600 text-white hover:bg-primary-700;
+  }
+  .btn-secondary {
+    @apply btn;
+    background-color: rgba(255,255,255,0.06);
+    color: #E6F6EB;
+  }
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700;
+  }
+  .input {
+    @apply px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+  }
+  .card {
+    /* Translucent glass card for dark/mossy background */
+    background-color: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: #E6F6EB;
+    @apply rounded-lg shadow-md p-6;
+  }
+
+  /* Login-specific styles for a mossy, glassy card */
+  .login-card {
+    /* Use explicit rgba instead of @apply with slash opacity which PostCSS/Tailwind cannot expand here */
+    background-color: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.06);
+    @apply p-8 rounded-xl shadow-xl backdrop-blur-sm relative overflow-hidden;
+  }
+
+  /* Intro panel on auth pages */
+  .intro-card {
+    background: linear-gradient(135deg, rgba(34,197,94,0.04), rgba(139,92,246,0.03));
+    border: 1px solid rgba(255,255,255,0.04);
+    color: #E6F6EB;
+    position: relative;
+    overflow: hidden;
+  }
+  .intro-card h3 {
+    font-size: 1.5rem;
+    line-height: 1.05;
+  }
+  .intro-card::before {
+    content: "";
+    position: absolute;
+    right: -10%;
+    bottom: -10%;
+    width: 220px;
+    height: 220px;
+    background: radial-gradient(circle at 30% 30%, rgba(139,92,246,0.06), transparent 30%);
+    filter: blur(40px);
+    opacity: 0.9;
+    pointer-events: none;
+  }
+
+  /* Subtle diagonal ribbon overlay applied to main containers */
+  .card, .login-card, .intro-card, .sidebar {
+    position: relative;
+    overflow: hidden;
+  }
+  .card > *, .login-card > *, .intro-card > *, .sidebar > * {
+    position: relative;
+    z-index: 2; /* ensure content sits above ribbons and special auth ribbons */
+  }
+
+  .card::before, .login-card::before, .intro-card::before, .sidebar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    /* diagonal stripes - subtle */
+    background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.03) 0 6px, rgba(0,0,0,0.02) 6px 12px);
+    opacity: var(--ribbon-opacity, 0.18);
+    mix-blend-mode: overlay;
+    transform: translateZ(0);
+    animation: ribbonPan 40s linear infinite;
+  }
+
+  @keyframes ribbonPan {
+    0% { background-position: 0 0; }
+    100% { background-position: 400px 400px; }
+  }
+
+  /* Utility to disable ribbons on a specific element */
+  .no-ribbons::before {
+    display: none !important;
+  }
+  .login-card::before {
+    content: "";
+    position: absolute;
+    inset: -10%;
+    background: radial-gradient(circle at 10% 10%, rgba(34,197,94,0.12), transparent 25%);
+    filter: blur(40px);
+    z-index: 0;
+    pointer-events: none;
+  }
+  .login-card > * {
+    position: relative;
+    z-index: 2;
+  }
+
+  /* Sidebar (left panel) visual improvements for contrast — now solid for readability */
+  .sidebar {
+    background-color: #042f27; /* solid mossy dark */
+    border-right: 1px solid rgba(255,255,255,0.06);
+    color: #ffffff;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+    /* prevent accidental blue text selection inside the tool panel */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+    position: relative; /* ensure stacking above content */
+    z-index: 60;
+  }
+  /* Disable global diagonal ribbons on the sidebar so content remains legible */
+  .sidebar::before { display: none !important; }
+
+  .sidebar .p-4 {
+    background: transparent;
+  }
+  .sidebar .overflow-y-auto {
+    padding-right: 8px;
+  }
+
+  /* Sidebar buttons and icon tweaks (higher contrast) */
+  .sidebar .overflow-y-auto button {
+    color: #FFFFFF !important; /* force full white */
+    background: transparent;
+    transition: background-color 150ms ease, border-color 150ms ease;
+    cursor: pointer;
+    opacity: 1 !important;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+    font-weight: 600;
+  }
+  .sidebar .overflow-y-auto button svg {
+    color: inherit; /* ensure icons follow text color */
+    opacity: 1 !important;
+  }
+  .sidebar .overflow-y-auto .p-2 {
+    background: transparent !important;
+    color: #9ae6c5; /* mossy accent for icons */
+  }
+  /* allow selecting instructions text */
+  .sidebar .instructions { -webkit-user-select: text; -moz-user-select: text; user-select: text; }
+  .sidebar .overflow-y-auto button:hover {
+    background: rgba(255,255,255,0.03);
+  }
+  .sidebar .overflow-y-auto button.selected, .sidebar .overflow-y-auto button[aria-pressed="true"] {
+    background: rgba(16,185,129,0.18);
+    border-color: rgba(16,185,129,0.6);
+    color: #ffffff;
+  }
+  .sidebar .overflow-y-auto .p-2 {
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.92);
+    border-radius: 6px;
+  }
+
+  .sidebar h2 { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em; }
+
+  /* Sidebar instruction box — stronger for emphasis */
+  .sidebar .instructions {
+    background: linear-gradient(180deg, rgba(16,185,129,0.22), rgba(6,95,70,0.32));
+    padding: 1rem;
+    color: #fff;
+    border-top: 1px solid rgba(255,255,255,0.04);
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+  }
+
+  /* Focus styles for sidebar buttons */
+  .sidebar .overflow-y-auto button:focus {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(16,185,129,0.12);
+  }
+
+  /* Ensure sidebar text and icons are always fully visible and immune to page selection overlays */
+  .sidebar, .sidebar * {
+    color: #ffffff !important;
+    opacity: 1 !important;
+  }
+  .sidebar ::selection, .sidebar *::selection {
+    background: rgba(59,130,246,0.18) !important;
+    color: #000000 !important;
+  }
+  .sidebar ::-moz-selection, .sidebar *::-moz-selection {
+    background: rgba(59,130,246,0.18) !important;
+    color: #000000 !important;
+  }
+
+  /* Custom scrollbar for sidebar */
+  .sidebar .overflow-y-auto::-webkit-scrollbar { width: 10px; }
+  .sidebar .overflow-y-auto::-webkit-scrollbar-track { background: transparent; }
+  .sidebar .overflow-y-auto::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+
+  /* Special auth ribbons for login and register */
+  .login-card.login-ribbon::after,
+  .login-card.register-ribbon::after {
+    content: "";
+    position: absolute;
+    left: -25%;
+    top: -35%;
+    width: 160%;
+    height: 60%;
+    transform: rotate(-12deg);
+    filter: blur(14px) saturate(120%);
+    opacity: 0.95;
+    z-index: 1; /* sits above global card stripes but beneath content */
+    pointer-events: none;
+    mix-blend-mode: screen;
+    animation: authRibbonShift 8s ease-in-out infinite;
+  }
+
+  /* login uses a green >> purple ribbon */
+  .login-card.login-ribbon::after {
+    background: linear-gradient(90deg, rgba(34,197,94,0.40) 0%, rgba(34,197,94,0.18) 30%, rgba(139,92,246,0.28) 70%);
+    mix-blend-mode: none;
+    opacity: 0.95;
+    z-index: 1; /* ensure auth ribbon sits above global stripes but below content */
+    box-shadow: 0 20px 60px rgba(34,197,94,0.06);
+  }
+
+  /* register uses a richer purple/pink ribbon (stronger) */
+  .login-card.register-ribbon::after {
+    background: linear-gradient(90deg, rgba(139,92,246,0.42) 0%, rgba(236,72,153,0.18) 50%, rgba(139,92,246,0.22) 100%);
+    mix-blend-mode: none;
+    opacity: 0.95;
+    z-index: 1; /* ensure auth ribbon sits above global stripes but below content */
+    box-shadow: 0 20px 60px rgba(139,92,246,0.06);
+  }
+
+  /* Add a brighter edge to make the ribbon visible across backgrounds */
+  .login-card.login-ribbon::before,
+  .login-card.register-ribbon::before {
+    content: "";
+    position: absolute;
+    left: -10%;
+    top: 40%;
+    width: 120%;
+    height: 6px;
+    transform: rotate(-12deg);
+    opacity: 0.85;
+    z-index: 1;
+    filter: blur(2px);
+    pointer-events: none;
+    border-radius: 6px;
+  }
+
+  .login-card.login-ribbon::before {
+    background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(34,197,94,0.18), rgba(255,255,255,0.04));
+  }
+
+  .login-card.register-ribbon::before {
+    background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(236,72,153,0.18), rgba(255,255,255,0.03));
+  }
+
+  @keyframes authRibbonShift {
+    0% { transform: rotate(-12deg) translateX(-2%); }
+    50% { transform: rotate(-12deg) translateX(2%); }
+    100% { transform: rotate(-12deg) translateX(-2%); }
+  }
+  .login-accent {
+    width: 48px;
+    height: 48px;
+    @apply flex items-center justify-center;
+    background: linear-gradient(135deg, rgba(34,197,94,0.95), rgba(139,92,246,0.65));
+    box-shadow: 0 8px 28px rgba(17,24,39,0.45);
+  }
+  .login-hero-title {
+    background-image: linear-gradient(90deg,#86efac,#bbf7d0,#67e8f9);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: 800;
+    font-size: 1.875rem; /* 3xl */
+    line-height: 1.1;
+  }
+  .login-subtitle {
+    @apply text-sm text-white/75;
+  }
+  .login-input {
+    @apply appearance-none block w-full pl-10 pr-10 py-2 rounded-lg focus:outline-none;
+    background-color: rgba(255,255,255,0.06);
+    color: #FFFFFF;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .login-input::placeholder {
+    color: rgba(255,255,255,0.70);
+  }
+  .login-btn {
+    @apply w-full flex justify-center py-2 px-4 rounded-lg text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 shadow-md;
+  }
+
+  /* Sidebar style */
+  .sidebar {
+    background-color: rgba(3,6,23,0.65);
+    border-right: 1px solid rgba(255,255,255,0.04);
+    color: #E6F6EB;
+  }
+
+  .sidebar a {
+    color: inherit;
+  }
+}
+
