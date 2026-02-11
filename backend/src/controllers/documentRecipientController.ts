@@ -40,7 +40,14 @@ export const addDocumentRecipients = async (req: AuthenticatedRequest, res: Resp
     const { documentId } = req.params;
     const { recipients } = req.body; // Array of { email, name, role, message, order }
 
-    // Check if document exists and user has permission
+    console.log('Adding recipients:', {
+      documentId,
+      userId: req.user?.id,
+      userEmail: req.user?.email,
+      recipients
+    });
+
+    // Check if document exists and user has permission (only owners can add recipients)
     const document = await Document.findById(documentId);
     if (!document) {
       return res.status(404).json({
@@ -49,10 +56,17 @@ export const addDocumentRecipients = async (req: AuthenticatedRequest, res: Resp
       });
     }
 
+    console.log('Document found:', {
+      documentId: document._id,
+      ownerId: document.owner,
+      userId: req.user?.id,
+      isOwner: document.owner.toString() === req.user?.id
+    });
+
     if (document.owner.toString() !== req.user?.id) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to modify this document'
+        message: 'Not authorized to modify this document. Only document owners can add recipients.'
       });
     }
 
@@ -195,7 +209,14 @@ export const deleteRecipient = async (req: AuthenticatedRequest, res: Response) 
       });
     }
 
-    if (document.owner.toString() !== req.user?.id) {
+    // Check if user is either the owner or an assigned recipient
+    const isOwner = document.owner.toString() === req.user?.id;
+    const isAssignedRecipient = await DocumentRecipient.findOne({
+      document: recipient.document,
+      email: req.user?.email
+    });
+
+    if (!isOwner && !isAssignedRecipient) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to delete this recipient'
