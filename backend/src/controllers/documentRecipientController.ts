@@ -115,7 +115,7 @@ export const addDocumentRecipients = async (req: AuthenticatedRequest, res: Resp
             ${recipient.message ? `<p><em>Message from sender:</em> ${recipient.message}</p>` : ''}
             <p><strong>Your role:</strong> ${recipient.role}</p>
             <p>Please click the link below to access the document:</p>
-            <a href="${process.env.FRONTEND_URL}/sign/${document._id}" 
+            <a href="${process.env.FRONTEND_URL}/sign-document/${document._id}?email=${encodeURIComponent(recipient.email)}" 
                style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block; margin: 16px 0;">
               Sign Document
             </a>
@@ -200,6 +200,150 @@ export const updateRecipientStatus = async (req: AuthenticatedRequest, res: Resp
     res.status(500).json({
       success: false,
       message: error.message
+    });
+  }
+};
+
+// Delete recipient
+export const getPublicDocumentSigning = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { documentId, email } = req.params;
+
+    console.log('Getting document for recipient signing:', { documentId, email });
+
+    // Find document and verify recipient exists
+    const document = await Document.findById(documentId);
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document not found'
+      });
+    }
+
+    // Find recipient record
+    const recipient = await DocumentRecipient.findOne({
+      document: documentId,
+      email: email.toLowerCase()
+    });
+
+    if (!recipient) {
+      return res.status(404).json({
+        success: false,
+        message: 'You are not authorized to sign this document'
+      });
+    }
+
+    // Get existing signatures for this document
+    const signatures = await Signature.find({
+      document: documentId
+    }).populate('signer', 'name email');
+
+    res.json({
+      success: true,
+      data: {
+        document,
+        recipient,
+        signatures
+      }
+    });
+  } catch (error) {
+    console.error('Error getting document for signing:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const signDocumentByRecipient = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { documentId, email } = req.params;
+    const { signatureData, type, page, x, y, width, height } = req.body;
+
+    console.log('Signing document by recipient:', { documentId, email, signatureData, type, page, x, y });
+
+    // Find document
+    const document = await Document.findById(documentId);
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document not found'
+      });
+    }
+
+    // Find recipient record
+    const recipient = await DocumentRecipient.findOne({
+      document: documentId,
+      email: email.toLowerCase()
+    });
+
+    if (!recipient) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to sign this document'
+      });
+    }
+
+    if (recipient.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'Document already signed or action not allowed'
+      });
+    }
+
+    // Create or find user
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = await User.create({
+        name: recipient.name,
+        email,
+        password: uuidv4(), // Random password
+        isActive: true
+      });
+    }
+
+    // Create signature
+    const signature = await Signature.create({
+      document: documentId,
+      signer: user._id,
+      documentRecipient: recipient._id,
+      page,
+      x,
+      y,
+      width: width || 150,
+      height: height || 50,
+      type,
+      signatureData,
+      status: 'signed'
+    });
+
+    // Update recipient status
+    recipient.status = 'signed';
+    recipient.signedAt = new Date();
+    await recipient.save();
+
+    // Update document status if all recipients signed
+    const allRecipients = await DocumentRecipient.find({ document: documentId });
+    const allSigned = allRecipients.every(r => r.status === 'signed');
+    
+    if (allSigned) {
+      document.status = 'completed';
+      await document.save();
+    }
+
+    res.json({
+      success: true,
+      message: 'Document signed successfully',
+      data: {
+        signature,
+        completed: allSigned
+      }
+    });
+  } catch (error) {
+    console.error('Error signing document:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
     });
   }
 };

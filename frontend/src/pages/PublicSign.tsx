@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { Document as PDFDoc, Page as PDFPage, pdfjs } from 'react-pdf'
-import { Loader2, Save } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../services/api'
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css'
@@ -61,6 +61,11 @@ export default function PublicSign() {
 
   const { signingRequest, currentSigner } = data?.data || {}
 
+  // Debug PDF file path
+  const pdfFilePath = `/uploads/${signingRequest?.document?.fileName}`
+  console.log('PDF file path:', pdfFilePath)
+  console.log('Document data:', signingRequest?.document)
+
   return (
     <div className="min-h-screen py-8 px-4">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -84,24 +89,43 @@ export default function PublicSign() {
         <div className="card p-4 overflow-auto">
           <div className="relative inline-block" onClick={(e) => {
             if (!isPlacing) return
-            const rect = e.currentTarget.getBoundingClientRect()
+            const pdfElement = e.currentTarget.querySelector('canvas')
+            if (!pdfElement) return
+            
+            // Get PDF canvas position and dimensions
+            const canvasRect = pdfElement.getBoundingClientRect()
+            const scaleX = pdfElement.width / canvasRect.width
+            const scaleY = pdfElement.height / canvasRect.height
+            
+            // Calculate position relative to PDF coordinates
+            const pdfX = (e.clientX - canvasRect.left) * scaleX
+            const pdfY = (e.clientY - canvasRect.top) * scaleY
+            
             setSignaturePos({
-              x: e.clientX - rect.left,
-              y: e.clientY - rect.top,
+              x: pdfX,
+              y: pdfY,
             })
             setIsPlacing(false)
           }}>
             <PDFDoc
-              file={`/uploads/${signingRequest?.document?.fileName}`}
+              file={pdfFilePath}
               onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+              onSourceError={(error: Error) => {
+                console.error('PDF loading error:', error)
+                toast.error('Failed to load PDF document')
+              }}
             >
               <PDFPage pageNumber={pageNumber} scale={1.2} />
             </PDFDoc>
             
             {signaturePos && (
               <div
-                className="absolute border-2 border-primary-500 bg-primary-100 px-2 py-1 rounded"
-                style={{ left: signaturePos.x, top: signaturePos.y }}
+                className="absolute border-2 border-primary-500 bg-primary-100 px-2 py-1 rounded text-sm"
+                style={{ 
+                  left: signaturePos.x / 1.2, // Adjust for PDF scale
+                  top: signaturePos.y / 1.2, // Adjust for PDF scale
+                  transform: 'scale(0.8)' // Scale down signature preview
+                }}
               >
                 {signatureText || 'Signature'}
               </div>

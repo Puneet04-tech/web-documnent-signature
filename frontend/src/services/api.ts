@@ -167,6 +167,24 @@ class ApiService {
     return response.data;
   }
 
+  async getDocumentForSigning(documentId: string, email: string): Promise<ApiResponse<{ document: any; recipient: any; signatures: any[] }>> {
+    const response = await this.client.get(`/signing-requests/document/${documentId}/${email}`);
+    return response.data;
+  }
+
+  async signDocumentByRecipient(documentId: string, email: string, data: {
+    signatureData: string;
+    type: string;
+    page: number;
+    x: number;
+    y: number;
+    width?: number;
+    height?: number;
+  }): Promise<ApiResponse<{ signature: any; completed: boolean }>> {
+    const response = await this.client.post(`/signing-requests/document/${documentId}/${email}/sign`, data);
+    return response.data;
+  }
+
   async signByToken(token: string, data: {
     email: string;
     signatureData: string;

@@ -139,8 +139,12 @@ export const signingRequestController = {
     const { token } = req.params;
     const { email } = req.query;
 
+    console.log('Getting signing request by token:', { token, email });
+
     const signingRequest = await SigningRequest.findOne({ token })
       .populate('document', 'title originalName filePath pageCount owner');
+
+    console.log('Found signing request:', signingRequest);
 
     if (!signingRequest) {
       throw new AppError('Signing request not found', 404);
