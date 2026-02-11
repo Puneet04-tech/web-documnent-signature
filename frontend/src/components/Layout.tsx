@@ -10,12 +10,14 @@ import {
   FileSignature
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
+import VideoBackground from './VideoBackground'
 
 export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [videoEnabled, setVideoEnabled] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -36,6 +38,9 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen">
+      {/* Video Background */}
+      {videoEnabled && <VideoBackground />}
+      
       {/* Desktop Sidebar */}
       <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
         <div className="flex min-h-0 flex-1 flex-col sidebar">
@@ -72,6 +77,7 @@ export default function Layout() {
               })}
             </nav>
           </div>
+          
           <div className="flex flex-shrink-0 border-t border-white/10 p-4">
             <div className="flex items-center w-full">
               <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
