@@ -91,6 +91,28 @@ export interface SigningRequest {
   updatedAt: string;
 }
 
+// Document Recipient Types
+export type RecipientRole = 'signer' | 'witness' | 'reviewer';
+export type RecipientStatus = 'pending' | 'signed' | 'declined' | 'completed';
+
+export interface DocumentRecipient {
+  _id: string;
+  document: string;
+  email: string;
+  name: string;
+  role: RecipientRole;
+  status: RecipientStatus;
+  order: number;
+  signingRequest?: string;
+  signedAt?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  witnessFor?: string;
+  message?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Audit Log Types
 export type AuditAction = 
   | 'document_created'

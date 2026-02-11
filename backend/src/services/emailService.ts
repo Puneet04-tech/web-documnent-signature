@@ -154,7 +154,7 @@ export const sendRejectionEmail = async (
           <h1>Signature Request Rejected</h1>
         </div>
         <div class="content">
-          <p><strong>${signerName}</strong> (${signerEmail}) has rejected the signature request for <strong>"${documentTitle}"</strong>.</p>
+          <p><strong>${signerName}</strong> (${signerEmail}) has rejected signature request for <strong>"${documentTitle}"</strong>.</p>
           <div class="reason">
             <strong>Reason:</strong>
             <p>${rejectReason}</p>
@@ -166,10 +166,19 @@ export const sendRejectionEmail = async (
     </html>
   `;
 
+  await sendEmail(to, `Signature Rejected: ${documentTitle}`, htmlContent);
+};
+
+// Generic email sending function
+export const sendEmail = async (
+  to: string,
+  subject: string,
+  htmlContent: string
+): Promise<void> => {
   await transporter.sendMail({
     from: config.email.from,
     to,
-    subject: `Signature Rejected: ${documentTitle}`,
+    subject,
     html: htmlContent
   });
 };

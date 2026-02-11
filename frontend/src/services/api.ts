@@ -1,5 +1,5 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
-import { ApiResponse, AuthResponse, User, Document, Signature, SignatureType, SigningRequest, AuditLog, PaginatedResponse } from '../types';
+import { ApiResponse, AuthResponse, User, Document, Signature, SignatureType, SigningRequest, AuditLog, PaginatedResponse, DocumentRecipient } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -260,6 +260,31 @@ class ApiService {
     const response = await this.client.get(`/finalize/${docId}/preview`, {
       responseType: 'blob'
     });
+    return response.data;
+  }
+
+  // Document Recipients API
+  async getDocumentRecipients(documentId: string): Promise<ApiResponse<DocumentRecipient[]>> {
+    const response = await this.client.get(`/document-recipients/documents/${documentId}/recipients`);
+    return response.data;
+  }
+
+  async addDocumentRecipients(documentId: string, data: {
+    recipients: Array<{
+      email: string;
+      name: string;
+      role: 'signer' | 'witness' | 'reviewer';
+      message?: string;
+      witnessFor?: string;
+      order?: number;
+    }>;
+  }): Promise<ApiResponse<DocumentRecipient[]>> {
+    const response = await this.client.post(`/document-recipients/documents/${documentId}/recipients`, data);
+    return response.data;
+  }
+
+  async deleteRecipient(recipientId: string): Promise<ApiResponse<void>> {
+    const response = await this.client.delete(`/document-recipients/recipients/${recipientId}`);
     return response.data;
   }
 }

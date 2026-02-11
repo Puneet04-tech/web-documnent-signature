@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { FileText, Download, Trash2, Edit, Send, History, CheckCircle } from 'lucide-react'
+import { FileText, Download, Trash2, Edit, Send, History, CheckCircle, Users } from 'lucide-react'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import api from '../services/api'
@@ -102,6 +102,10 @@ export default function DocumentDetail() {
             <Send className="h-4 w-4" />
             Request Signatures
           </Link>
+          <Link to={`/documents/${id}/recipients`} className="btn-secondary flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Manage Recipients
+          </Link>
           <button onClick={handleDelete} className="btn-danger flex items-center gap-2">
             <Trash2 className="h-4 w-4" />
           </button>
@@ -144,7 +148,7 @@ export default function DocumentDetail() {
             </div>
             <div>
               <h3 className="text-sm font-medium text-white/80">File Size</h3>
-              <p className="mt-1 text-sm text-white">{(doc?.fileSize / 1024 / 1024).toFixed(2)} MB</p>
+              <p className="mt-1 text-sm text-white">{((doc?.fileSize || 0) / 1024 / 1024).toFixed(2)} MB</p>
             </div>
             <div>
               <h3 className="text-sm font-medium text-white/80">Original Name</h3>

@@ -13,6 +13,7 @@ import UploadDocument from './pages/UploadDocument'
 import SignDocument from './pages/SignDocument'
 import PublicSign from './pages/PublicSign'
 import SigningRequests from './pages/SigningRequests'
+import DocumentRecipients from './pages/DocumentRecipients'
 import AuditLog from './pages/AuditLog'
 import NotFound from './pages/NotFound'
 
@@ -65,6 +66,7 @@ function App() {
         <Route path="documents/upload" element={<UploadDocument />} />
         <Route path="documents/:id" element={<DocumentDetail />} />
         <Route path="documents/:id/sign" element={<SignDocument />} />
+        <Route path="documents/:id/recipients" element={<DocumentRecipients />} />
         <Route path="signing-requests" element={<SigningRequests />} />
         <Route path="audit/:docId" element={<AuditLog />} />
       </Route>

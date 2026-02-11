@@ -12,10 +12,11 @@ import { AppError, handleError } from './utils/errorHandler';
 // Import routes
 import authRoutes from './routes/auth';
 import documentRoutes from './routes/documents';
-import signatureRoutes from './routes/signatures';
 import signatureFieldRoutes from './routes/signatureFields';
+import signatureRoutes from './routes/signatures';
 import signingRequestRoutes from './routes/signingRequests';
 import auditRoutes from './routes/audit';
+import documentRecipientRoutes from './routes/documentRecipients';
 import finalizeRoutes from './routes/finalize';
 
 // Create Express app
@@ -64,6 +65,7 @@ app.use('/api/signatures', signatureRoutes);
 app.use('/api/signature-fields', signatureFieldRoutes);
 app.use('/api/signing-requests', signingRequestRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/document-recipients', documentRecipientRoutes);
 app.use('/api/finalize', finalizeRoutes);
 
 // 404 handler
