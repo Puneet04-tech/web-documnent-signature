@@ -8,8 +8,10 @@ import { IDocumentRecipient } from '../models/DocumentRecipient';
 // Extend Request type to include user
 interface AuthenticatedRequest extends Request {
   user?: {
-    id: string;
+    _id: string;
     email: string;
+    role: string;
+    name: string;
   };
 }
 
