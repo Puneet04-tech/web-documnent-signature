@@ -46,12 +46,13 @@ export async function generateSignedPDF(documentId: string): Promise<string> {
     const { width: pageWidth, height: pageHeight } = page.getSize();
     console.log(`Page ${field.page} size: ${pageWidth}x${pageHeight}`);
     
-    // Coordinates are now normalized to PDF scale (1.0) by frontend
+    // Coordinates from frontend are already normalized to PDF scale (1.0)
     // No need to apply scale factor, use coordinates directly
     const pdfX = field.x;
     const pdfY = pageHeight - field.y - field.height;
     
     console.log(`Drawing ${field.type} at PDF coords: x=${pdfX}, y=${pdfY}, w=${field.width}, h=${field.height}`);
+    console.log(`Original field coords: x=${field.x}, y=${field.y}, page=${field.page}`);
 
     if (field.type === 'signature' || field.type === 'initials') {
       // Handle image signatures
@@ -60,16 +61,16 @@ export async function generateSignedPDF(documentId: string): Promise<string> {
           const imageBytes = dataURLToBytes(field.value);
           const embeddedImage = await pdfDoc.embedPng(imageBytes);
           
-          console.log('Embedding PNG signature image');
+          console.log(`Embedding ${field.type} PNG signature image`);
           page.drawImage(embeddedImage, {
             x: pdfX,
             y: pdfY,
             width: field.width,
             height: field.height,
           });
-          console.log('Image drawn successfully');
+          console.log(`${field.type} image drawn successfully`);
         } catch (err) {
-          console.error('Error embedding signature image:', err);
+          console.error(`Error embedding ${field.type} image:`, err);
           // Fallback to text
           const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
           page.drawText(field.value.substring(0, 20), {
@@ -91,6 +92,46 @@ export async function generateSignedPDF(documentId: string): Promise<string> {
           font,
           color: rgb(0, 0, 0),
         });
+        console.log(`${field.type} text drawn: ${field.value}`);
+      }
+    } else if (field.type === 'witness') {
+      // Handle witness signatures
+      if (field.value.startsWith('data:image')) {
+        try {
+          const imageBytes = dataURLToBytes(field.value);
+          const embeddedImage = await pdfDoc.embedPng(imageBytes);
+          
+          console.log('Embedding witness PNG signature image');
+          page.drawImage(embeddedImage, {
+            x: pdfX,
+            y: pdfY,
+            width: field.width,
+            height: field.height,
+          });
+          console.log('Witness image drawn successfully');
+        } catch (err) {
+          console.error('Error embedding witness image:', err);
+          // Fallback to text
+          const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+          page.drawText(`Witness: ${field.value.substring(0, 20)}`, {
+            x: pdfX,
+            y: pdfY + field.height / 2,
+            size: 12,
+            font,
+            color: rgb(0, 0, 0.5),
+          });
+        }
+      } else {
+        // Text witness signature
+        const font = await pdfDoc.embedFont(StandardFonts.Courier);
+        page.drawText(`Witness: ${field.value}`, {
+          x: pdfX,
+          y: pdfY + field.height / 2,
+          size: 12,
+          font,
+          color: rgb(0, 0, 0.5),
+        });
+        console.log(`Witness text drawn: ${field.value}`);
       }
     } else if (field.type === 'name' || field.type === 'text' || field.type === 'input') {
       // Text fields
@@ -337,6 +378,45 @@ export const finalizeController = {
           font,
           color: rgb(0, 0.5, 0),
         });
+      } else if (field.type === 'stamp') {
+        // Stamp field - similar to signature
+        if (field.value.startsWith('data:image')) {
+          try {
+            const imageBytes = dataURLToBytes(field.value);
+            const embeddedImage = await pdfDoc.embedPng(imageBytes);
+            
+            console.log('Embedding stamp PNG image');
+            page.drawImage(embeddedImage, {
+              x: pdfX,
+              y: pdfY,
+              width: field.width,
+              height: field.height,
+            });
+            console.log('Stamp image drawn successfully');
+          } catch (err) {
+            console.error('Error embedding stamp image:', err);
+            // Fallback to text
+            const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+            page.drawText(`[STAMP] ${field.value.substring(0, 20)}`, {
+              x: pdfX,
+              y: pdfY + field.height / 2,
+              size: 12,
+              font,
+              color: rgb(0, 0, 0.5),
+            });
+          }
+        } else {
+          // Text stamp
+          const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+          page.drawText(`[STAMP] ${field.value}`, {
+            x: pdfX,
+            y: pdfY + field.height / 2,
+            size: 12,
+            font,
+            color: rgb(0, 0, 0.5),
+          });
+          console.log(`Stamp text drawn: ${field.value}`);
+        }  
       }
     }
 
