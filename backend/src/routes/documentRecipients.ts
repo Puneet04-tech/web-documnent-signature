@@ -16,7 +16,7 @@ router.get('/documents/:documentId/recipients', authMiddleware, getDocumentRecip
 router.post('/documents/:documentId/recipients', authMiddleware, addDocumentRecipients);
 
 // Update recipient status
-router.put('/recipients/:recipientId/status', updateRecipientStatus);
+router.put('/recipients/:recipientId/status', authMiddleware, updateRecipientStatus);
 
 // Delete recipient
 router.delete('/recipients/:recipientId', authMiddleware, deleteRecipient);

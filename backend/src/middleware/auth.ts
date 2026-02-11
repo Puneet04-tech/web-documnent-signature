@@ -28,8 +28,21 @@ export const authMiddleware = async (
     
     const decoded = verifyAccessToken(token);
     
+    console.log('JWT decoded:', {
+      decoded,
+      decodedUserId: decoded.userId,
+      decodedEmail: decoded.email,
+      decodedName: decoded.name
+    });
+    
     // Verify user still exists and is active
     const user = await User.findById(decoded.userId).select('_id isActive');
+    
+    console.log('User found in DB:', {
+      userId: decoded.userId,
+      userFound: !!user,
+      userActive: user?.isActive
+    });
     
     if (!user) {
       res.status(401).json({ success: false, message: 'User not found' });
@@ -42,6 +55,12 @@ export const authMiddleware = async (
     }
     
     req.user = { ...decoded, _id: decoded.userId, name: decoded.name, email: decoded.email };
+    
+    console.log('req.user set:', {
+      reqUser: req.user,
+      reqUserId: req.user._id,
+      reqUserEmail: req.user.email
+    });
     next();
   } catch (error) {
     if (error instanceof Error && error.name === 'TokenExpiredError') {
