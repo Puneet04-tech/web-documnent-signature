@@ -37,9 +37,9 @@ export default function Layout() {
 
   return (
     <VideoBackground>
-      <div className="min-h-screen">
+      <div className="min-h-screen relative z-20">
         {/* Desktop Sidebar */}
-        <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
+        <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col z-30 pointer-events-auto">
           <div className="flex min-h-0 flex-1 flex-col sidebar">
             <div className="flex flex-1 flex-col overflow-y-auto pt-5 pb-4">
               <div className="flex flex-shrink-0 items-center px-4">
@@ -97,7 +97,7 @@ export default function Layout() {
         </div>
 
         {/* Mobile header */}
-        <div className="md:hidden bg-transparent border-b border-white/10">
+        <div className="md:hidden bg-transparent border-b border-white/10 relative z-30 pointer-events-auto">
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center">
               <div className="h-8 w-8 bg-primary-600 rounded-lg flex items-center justify-center mr-2">
@@ -148,7 +148,7 @@ export default function Layout() {
         </div>
 
         {/* Main content */}
-        <div className="md:pl-64">
+        <div className="md:pl-64 relative z-20 pointer-events-auto">
           <main className="py-6 px-4 sm:px-6 lg:px-8">
             <Outlet />
           </main>
