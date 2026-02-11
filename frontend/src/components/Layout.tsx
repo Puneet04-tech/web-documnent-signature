@@ -10,14 +10,14 @@ import {
   FileSignature
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
-import VideoBackground from './VideoBackground'
+import VideoBackground from './VideoBackground.tsx'
 
 export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [videoEnabled, setVideoEnabled] = useState(false)
+  const [videoEnabled] = useState(false)
 
   const handleLogout = () => {
     logout()

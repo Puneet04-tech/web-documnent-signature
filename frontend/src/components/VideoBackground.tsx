@@ -19,6 +19,7 @@ const VideoBackground: React.FC<VideoBackgroundProps> = ({
   useEffect(() => {
     const video = document.getElementById('bg-video') as HTMLVideoElement
     if (video) {
+      console.log('Video element found:', video)
       video.playbackRate = 0.5 // Slow down for subtle effect
       video.loop = true
       video.muted = true
@@ -26,7 +27,10 @@ const VideoBackground: React.FC<VideoBackgroundProps> = ({
       video.autoplay = true
       
       // Add event listeners for better debugging
-      video.addEventListener('load', () => setIsLoaded(true))
+      video.addEventListener('load', () => {
+        console.log('Video loaded successfully')
+        setIsLoaded(true)
+      })
       video.addEventListener('error', (e) => {
         console.error('Video loading error:', e)
         setHasError(true)

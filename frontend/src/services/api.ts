@@ -47,12 +47,20 @@ class ApiService {
               
               originalRequest.headers.Authorization = `Bearer ${accessToken}`;
               return this.client(originalRequest);
-            } catch {
+            } catch (refreshError) {
+              console.error('Token refresh failed:', refreshError);
               // Refresh failed, logout user
               localStorage.removeItem('accessToken');
               localStorage.removeItem('refreshToken');
               window.location.href = '/login';
+              return;
             }
+          } else {
+            // No refresh token, logout user
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            window.location.href = '/login';
+            return;
           }
         }
         
