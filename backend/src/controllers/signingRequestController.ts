@@ -139,7 +139,11 @@ export const signingRequestController = {
     const { token } = req.params;
     const { email } = req.query;
 
-    console.log('Getting signing request by token:', { token, email });
+    console.log('=== SIGNING REQUEST ROUTE ACCESSED ===');
+    console.log('Token:', token);
+    console.log('Email:', email);
+    console.log('Route:', req.originalUrl);
+    console.log('Method:', req.method);
 
     const signingRequest = await SigningRequest.findOne({ token })
       .populate('document', 'title originalName filePath pageCount owner');

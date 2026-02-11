@@ -11,12 +11,12 @@ router.get('/', authMiddleware, signingRequestController.list);
 router.post('/:id/resend', authMiddleware, signingRequestController.resend);
 router.post('/:id/cancel', authMiddleware, signingRequestController.cancel);
 
-// Public routes (for external signers)
+// Document recipient routes (for document recipients) - MUST come before public routes
+router.get('/sign-document/:documentId/:email', documentRecipientController.getPublicDocumentSigning);
+router.post('/sign-document/:documentId/:email/sign', documentRecipientController.signDocumentByRecipient);
+
+// Public routes (for external signers) - MUST come after document recipient routes
 router.get('/public/:token', optionalAuthMiddleware, signingRequestController.getByToken);
 router.post('/public/:token/sign', optionalAuthMiddleware, signingRequestController.signByToken);
-
-// Document recipient routes (for document recipients)
-router.get('/document/:documentId/:email', documentRecipientController.getPublicDocumentSigning);
-router.post('/document/:documentId/:email/sign', documentRecipientController.signDocumentByRecipient);
 
 export default router;

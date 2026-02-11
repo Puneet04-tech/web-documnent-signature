@@ -209,7 +209,11 @@ export const getPublicDocumentSigning = async (req: AuthenticatedRequest, res: R
   try {
     const { documentId, email } = req.params;
 
-    console.log('Getting document for recipient signing:', { documentId, email });
+    console.log('=== DOCUMENT RECIPIENT ROUTE ACCESSED ===');
+    console.log('Document ID:', documentId);
+    console.log('Email:', email);
+    console.log('Route:', req.originalUrl);
+    console.log('Method:', req.method);
 
     // Find document and verify recipient exists
     const document = await Document.findById(documentId);
