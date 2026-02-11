@@ -13,7 +13,7 @@ const VideoBackground: React.FC<VideoBackgroundProps> = ({
     <div className="relative min-h-screen w-full overflow-hidden">
       {/* Video Background */}
       <video
-        className="absolute top-0 left-0 w-full h-full object-cover"
+        className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none"
         autoPlay
         loop
         muted
@@ -24,10 +24,10 @@ const VideoBackground: React.FC<VideoBackgroundProps> = ({
       </video>
       
       {/* Overlay for better content visibility */}
-      <div className="absolute top-0 left-0 w-full h-full bg-black/40"></div>
+      <div className="absolute top-0 left-0 w-full h-full bg-black/40 pointer-events-none"></div>
       
       {/* Content */}
-      <div className="relative z-10">
+      <div className="relative z-10 pointer-events-auto">
         {children}
       </div>
     </div>
