@@ -45,15 +45,14 @@ export const addDocumentRecipients = async (req: AuthenticatedRequest, res: Resp
     console.log('Adding recipients:', {
       documentId,
       documentIdType: typeof documentId,
-      userId: req.user?.id,
-      userIdType: typeof req.user?.id,
+      userId: req.user?._id,
+      userIdType: typeof req.user?._id,
       userEmail: req.user?.email,
       recipients
     });
 
-    // TEMPORARY: For testing, allow any authenticated user to add recipients
-    // TODO: Remove this in production
-    if (!req.user?.id) {
+    // Check if user is authenticated
+    if (!req.user?._id) {
       console.log('No user ID found in request');
       return res.status(401).json({
         success: false,
@@ -76,18 +75,17 @@ export const addDocumentRecipients = async (req: AuthenticatedRequest, res: Resp
       documentIdType: typeof document._id,
       ownerId: document.owner,
       ownerIdType: typeof document.owner,
-      userId: req.user?.id,
-      isOwner: document.owner.toString() === req.user?.id,
-      comparison: `"${document.owner.toString()}" === "${req.user?.id}"`
+      userId: req.user?._id,
+      isOwner: document.owner.toString() === req.user?._id,
+      comparison: `"${document.owner.toString()}" === "${req.user?._id}"`
     });
 
-    // TEMPORARY: Skip ownership check for testing
-    // if (document.owner.toString() !== req.user?.id) {
-    //   return res.status(403).json({
-    //     success: false,
-    //     message: 'Not authorized to modify this document. Only document owners can add recipients.'
-    //   });
-    // }
+    if (document.owner.toString() !== req.user?._id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to modify this document. Only document owners can add recipients.'
+      });
+    }
 
     // Create recipients
     const newRecipients = await Promise.all(
@@ -229,7 +227,7 @@ export const deleteRecipient = async (req: AuthenticatedRequest, res: Response) 
     }
 
     // Check if user is either the owner or an assigned recipient
-    const isOwner = document.owner.toString() === req.user?.id;
+    const isOwner = document.owner.toString() === req.user?._id;
     const isAssignedRecipient = await DocumentRecipient.findOne({
       document: recipient.document,
       email: req.user?.email
