@@ -26,9 +26,11 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../services/api'
-import { ApiResponse } from '../types'
+import { ApiResponse, Document, Signature, SigningRequest } from '../types'
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`
+// Import worker via Vite URL to avoid CORS issues
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
 
 type FieldType = 'signature' | 'initials' | 'name' | 'date' | 'text' | 'input' | 'checkbox' | 'witness' | 'stamp'
 
@@ -331,7 +333,11 @@ export default function SignDocument() {
   console.log('id:', id);
   console.log('email:', email);
 
-  const { data: docData, isLoading } = useQuery({
+  type DocumentData = 
+    | { document: Document; signatures: Signature[]; signingRequests: SigningRequest[]; fields?: any[] }
+    | { document: any; recipient: any; signatures: any[]; fields?: any[] };
+
+  const { data: docData, isLoading } = useQuery<ApiResponse<DocumentData>>({
     queryKey: isDocumentRecipient ? ['document-signing', documentId, email] : ['document', documentId],
     queryFn: () => {
       console.log('=== API CALL ===');
@@ -344,7 +350,7 @@ export default function SignDocument() {
         api.getDocument(documentId!);
     },
     enabled: !!documentId,
-  }) as any
+  })
 
   // Debug: Log the document data when it arrives
   useEffect(() => {
@@ -680,6 +686,7 @@ export default function SignDocument() {
     e.preventDefault()
     e.stopPropagation()
     
+    console.log('Mouse down on field:', fieldId)
     setIsDragging(fieldId)
     setDragStart({ x: e.clientX, y: e.clientY })
     setSelectedField(fieldId)
@@ -693,6 +700,13 @@ export default function SignDocument() {
         clearTimeout(dragTimeout)
       }
       setIsDragging(null)
+      // Re-enable page scrolling when drag ends
+      document.removeEventListener('wheel', preventScroll, { passive: false } as any)
+      document.removeEventListener('touchmove', preventScroll as any, { passive: false } as any)
+    }
+
+    const preventScroll = (e: Event) => {
+      e.preventDefault()
     }
     
     const handleGlobalMouseMove = (e: MouseEvent) => {
@@ -713,33 +727,66 @@ export default function SignDocument() {
       const newX = Math.max(0, field.x + scaledDeltaX)
       const newY = Math.max(0, field.y + scaledDeltaY)
       
-      // For recipients, update local state only (no backend call)
-      if (isDocumentRecipient) {
-        setFields(prevFields => 
-          prevFields.map(f => 
-            f._id === isDragging 
-              ? { ...f, x: newX, y: newY }
-              : f
-          )
-        )
-        setDragStart({ x: e.clientX, y: e.clientY })
-      } else {
-        // For owners, use backend update
-        // Debounce the updates - increased to 100ms to reduce API calls
-        if (dragTimeout) {
-          clearTimeout(dragTimeout)
+      console.log('Dragging field:', isDragging, 'from', field.x, field.y, 'to', newX, newY)
+      
+      // Auto-scroll when dragging near edges
+      const mainElement = document.querySelector('main') as HTMLElement
+      const scrollSpeed = 15
+      const edgeThreshold = 50 // pixels from edge to start scrolling
+      
+      if (mainElement) {
+        const rect = mainElement.getBoundingClientRect()
+        
+        // Check if mouse is near the edges of the main element
+        const nearLeft = e.clientX < rect.left + edgeThreshold
+        const nearRight = e.clientX > rect.right - edgeThreshold
+        const nearTop = e.clientY < rect.top + edgeThreshold
+        const nearBottom = e.clientY > rect.bottom - edgeThreshold
+        
+        // Scroll the main element if near edges
+        if (nearLeft && mainElement.scrollLeft > 0) {
+          mainElement.scrollLeft -= scrollSpeed
+        } else if (nearRight && mainElement.scrollLeft < mainElement.scrollWidth - mainElement.clientWidth) {
+          mainElement.scrollLeft += scrollSpeed
         }
         
-        dragTimeout = setTimeout(() => {
-          updateFieldMutation.mutate({
-            id: isDragging,
-            data: { x: newX, y: newY }
-          })
-        }, 100) // Reduced from 16ms to 100ms to prevent 429 errors
+        if (nearTop && mainElement.scrollTop > 0) {
+          mainElement.scrollTop -= scrollSpeed
+        } else if (nearBottom && mainElement.scrollTop < mainElement.scrollHeight - mainElement.clientHeight) {
+          mainElement.scrollTop += scrollSpeed
+        }
       }
+      
+      // Update local state immediately for visual feedback
+      setFields(prevFields => 
+        prevFields.map(f => 
+          f._id === isDragging 
+            ? { ...f, x: newX, y: newY }
+            : f
+        )
+      )
+      setDragStart({ x: e.clientX, y: e.clientY })
+      
+      // For recipients, that's all we need (no backend call)
+      if (isDocumentRecipient) {
+        return
+      }
+      
+      // For owners, also update backend with debouncing
+      if (dragTimeout) {
+        clearTimeout(dragTimeout)
+      }
+      
+      dragTimeout = setTimeout(() => {
+        updateFieldMutation.mutate({
+          id: isDragging,
+          data: { x: newX, y: newY }
+        })
+      }, 100) // Reduced from 16ms to 100ms to prevent 429 errors
     }
     
     if (isDragging) {
+      // Allow scrolling during drag for auto-scroll functionality
       document.addEventListener('mouseup', handleGlobalMouseUp)
       document.addEventListener('mousemove', handleGlobalMouseMove)
     }
@@ -972,31 +1019,43 @@ export default function SignDocument() {
         </aside>
 
         {/* PDF Viewer */}
-        <main className="flex-1 overflow-auto bg-gray-100 p-8">
+        <main className="flex-1 bg-gray-100 p-8" style={{ overflow: 'auto', maxHeight: '70vh', maxWidth: '80vw' }}>
           <div className="flex justify-center">
             <div
               ref={containerRef}
-              className={`relative inline-block shadow-lg ${isPlacing ? 'cursor-crosshair' : 'cursor-default'}`}
+              className={`relative shadow-lg ${isPlacing ? 'cursor-crosshair' : 'cursor-default'}`}
               onClick={handlePageClick}
               style={{ 
                 pointerEvents: isDragging ? 'none' : 'auto',
-                border: '3px solid blue', // Add blue border for debugging
-                backgroundColor: 'rgba(0, 0, 255, 0.1)' // Add light blue background for debugging
+                display: 'inline-block'
               }}
             >
-              <PDFDoc
-                file={`/uploads/${docData?.data?.document?.fileName}`}
-                onLoadSuccess={onDocumentLoadSuccess}
-                loading={<Loader2 className="h-8 w-8 animate-spin" />}
-              >
-                <PDFPage 
-                  pageNumber={pageNumber} 
-                  scale={scale} 
-                  renderTextLayer={false} 
-                  renderAnnotationLayer={false}
-                  className="shadow-lg"
-                />
-              </PDFDoc>
+              {docData?.data?.document?.fileName && docData?.data?.document?.fileSize > 0 ? (
+                <PDFDoc
+                  file={`/uploads/${docData?.data?.document?.fileName}`}
+                  onLoadSuccess={onDocumentLoadSuccess}
+                  loading={<Loader2 className="h-8 w-8 animate-spin" />}
+                >
+                  <PDFPage 
+                    pageNumber={pageNumber} 
+                    scale={scale} 
+                    renderTextLayer={false} 
+                    renderAnnotationLayer={false}
+                    className="shadow-lg"
+                  />
+                </PDFDoc>
+              ) : (
+                <div className="w-[900px] h-[1100px] bg-white flex items-center justify-center text-center p-8">
+                  <div>
+                    <p className="text-xl font-semibold text-gray-700 mb-4">No PDF uploaded for this document</p>
+                    <p className="text-sm text-gray-500 mb-6">This document was created from a template and doesn't have an attached PDF yet. Upload a file to enable signing and preview.</p>
+                    <div className="flex justify-center gap-3">
+                      <button onClick={() => navigate('/documents/upload')} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Upload File</button>
+                      <button onClick={() => navigate(`/documents/${documentId}/recipients`)} className="px-4 py-2 border rounded-lg">Manage Recipients</button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Fields Overlay - separate from PDF to capture clicks */}
               <div 

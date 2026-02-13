@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { FileText, Download, Trash2, Edit, Send, History, CheckCircle, Users } from 'lucide-react'
+import { FileText, Download, Trash2, Edit, Send, History, CheckCircle, Users, BarChart } from 'lucide-react'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import api from '../services/api'
@@ -107,7 +107,7 @@ export default function DocumentDetail() {
             Manage Recipients
           </Link>
           <Link to={`/documents/${id}/analytics`} className="btn-secondary flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
+            <BarChart className="h-4 w-4" />
             Analytics
           </Link>
           <button onClick={handleDelete} className="btn-danger flex items-center gap-2">

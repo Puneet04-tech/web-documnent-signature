@@ -5,8 +5,10 @@ import { Document as PDFDoc, Page as PDFPage, pdfjs } from 'react-pdf'
 import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../services/api'
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`
+// Use Vite-served worker (prevents cross-origin / CORS issues)
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
 
 export default function PublicSign() {
   const { token } = useParams<{ token: string }>()

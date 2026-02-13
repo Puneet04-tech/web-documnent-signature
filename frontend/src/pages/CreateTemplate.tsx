@@ -212,7 +212,8 @@ export default function CreateTemplate() {
               {templateData.fields.map((field, index) => (
                 <div key={index} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center">
+                    <>
                       <select
                         value={field.type}
                         onChange={(e) => updateField(index, { type: e.target.value as any })}
@@ -230,6 +231,7 @@ export default function CreateTemplate() {
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="Field label"
                       />
+                    </>
                     </div>
                     
                     <button
@@ -322,24 +324,24 @@ export default function CreateTemplate() {
                 </div>
               </div>
             </div>
-          )}
-        </div>,
-        
-        {/* Actions */}
-        <div className="flex justify-end gap-4">
+          </div>
+        )}
+
+        {/* Form footer / submit */}
+        <div className="flex justify-end gap-3">
           <button
             type="button"
             onClick={() => navigate('/templates')}
-            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+            className="px-4 py-2 border border-white/10 rounded-lg text-white/80"
           >
             Cancel
           </button>
+
           <button
             type="submit"
             disabled={createTemplateMutation.isPending}
-            className="px-6 py-2 border border-transparent rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
-            <Save className="h-4 w-4 mr-2" />
             {createTemplateMutation.isPending ? 'Creating...' : 'Create Template'}
           </button>
         </div>

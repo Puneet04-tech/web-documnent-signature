@@ -18,6 +18,7 @@ import signingRequestRoutes from './routes/signingRequests';
 import auditRoutes from './routes/audit';
 import documentRecipientRoutes from './routes/documentRecipients';
 import finalizeRoutes from './routes/finalize';
+import templateRoutes from './routes/templates';
 
 // Create Express app
 const app: Application = express();
@@ -69,6 +70,7 @@ app.use('/api/signing-requests', signingRequestRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/document-recipients', documentRecipientRoutes);
 app.use('/api/finalize', finalizeRoutes);
+app.use('/api/templates', templateRoutes);
 
 // 404 handler
 app.use((_req: Request, _res: Response, next: NextFunction) => {

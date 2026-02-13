@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { body } from 'express-validator';
 import { v4 as uuidv4 } from 'uuid';
-import { Document, SigningRequest, Signature, User } from '../models';
+import { Document, SigningRequest, Signature, User, SignatureField } from '../models';
 import { AppError, asyncHandler } from '../utils/errorHandler';
 import { AuthRequest } from '../middleware/auth';
 import { createAuditLog } from '../middleware/audit';
@@ -69,8 +69,19 @@ export const signingRequestController = {
     await document.save();
 
     // Send emails to signers
+    // Fetch signature fields for this document
+    const signatureFields = await SignatureField.find({ 
+      document: documentId,
+      assignedTo: { $in: processedSigners.map((s: any) => s.email) }
+    });
+
     for (const signer of processedSigners) {
       try {
+        // Get fields assigned to this signer
+        const signerFields = signatureFields.filter((field: any) => 
+          field.assignedTo === signer.email || !field.assignedTo
+        );
+
         await sendSigningRequestEmail({
           to: signer.email,
           signerName: signer.name,
@@ -78,7 +89,12 @@ export const signingRequestController = {
           ownerName: req.user!.name || 'Someone',
           message,
           subject,
-          signingUrl: `${process.env.FRONTEND_URL}/sign/${token}?email=${encodeURIComponent(signer.email)}`
+          signingUrl: `${process.env.FRONTEND_URL}/sign/${token}?email=${encodeURIComponent(signer.email)}`,
+          fields: signerFields.map((field: any) => ({
+            type: field.type,
+            label: field.label,
+            required: field.required
+          }))
         });
       } catch (error) {
         console.error(`Failed to send email to ${signer.email}:`, error);

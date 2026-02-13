@@ -9,6 +9,11 @@ interface SigningRequestEmailData {
   message?: string;
   subject?: string;
   signingUrl: string;
+  fields?: Array<{
+    type: string;
+    label?: string;
+    required: boolean;
+  }>;
 }
 
 const transporter = nodemailer.createTransport({
@@ -22,10 +27,26 @@ const transporter = nodemailer.createTransport({
 });
 
 export const sendSigningRequestEmail = async (data: SigningRequestEmailData): Promise<void> => {
-  const { to, signerName, documentTitle, ownerName, message, subject, signingUrl } = data;
+  const { to, signerName, documentTitle, ownerName, message, subject, signingUrl, fields } = data;
 
   const emailSubject = subject || `Signature Request: ${documentTitle}`;
   
+  const fieldsHtml = fields && fields.length > 0 ? `
+    <div style="background: #f3f4f6; padding: 15px; border-radius: 6px; margin: 15px 0;">
+      <h3 style="margin: 0 0 10px 0; color: #374151; font-size: 16px;">Fields to Complete:</h3>
+      <ul style="margin: 0; padding-left: 20px; color: #4b5563;">
+        ${fields.map(field => `
+          <li style="margin-bottom: 5px;">
+            <strong>${field.label || field.type}</strong> 
+            <span style="color: ${field.required ? '#ef4444' : '#6b7280'}; font-size: 12px;">
+              (${field.required ? 'Required' : 'Optional'})
+            </span>
+          </li>
+        `).join('')}
+      </ul>
+    </div>
+  ` : '';
+
   const htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -47,8 +68,9 @@ export const sendSigningRequestEmail = async (data: SigningRequestEmailData): Pr
         </div>
         <div class="content">
           <p>Hello ${signerName},</p>
-          <p><strong>${ownerName}</strong> has requested your signature on the document <strong>"${documentTitle}"</strong>.</p>
+          <p><strong>${ownerName}</strong> has requested your signature on document <strong>"${documentTitle}"</strong>.</p>
           ${message ? `<p><em>${message}</em></p>` : ''}
+          ${fieldsHtml}
           <p>Please click the button below to review and sign the document:</p>
           <center>
             <a href="${signingUrl}" class="button">Sign Document</a>
@@ -68,9 +90,13 @@ export const sendSigningRequestEmail = async (data: SigningRequestEmailData): Pr
   const textContent = `
 Hello ${signerName},
 
-${ownerName} has requested your signature on the document "${documentTitle}".
+${ownerName} has requested your signature on document "${documentTitle}".
 
 ${message ? `Message: ${message}\n` : ''}
+${fields && fields.length > 0 ? `
+Fields to Complete:
+${fields.map(field => `- ${field.label || field.type} (${field.required ? 'Required' : 'Optional'})`).join('\n')}
+` : ''}
 Please use the following link to review and sign the document:
 ${signingUrl}
 

@@ -8,7 +8,6 @@ import {
   X,
   Home,
   FileSignature,
-  BarChart3,
   Layers
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
