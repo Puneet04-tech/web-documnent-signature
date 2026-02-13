@@ -143,7 +143,7 @@ export async function generateSignedPDF(documentId: string): Promise<string> {
         font,
         color: rgb(0, 0, 0),
       });
-    } else if (field.type === 'witness') {
+    } else if ((field.type as any) === 'witness') {
       // Witness field - similar to signature but with different styling
       if (field.value.startsWith('data:image')) {
         try {

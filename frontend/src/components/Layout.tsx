@@ -7,7 +7,9 @@ import {
   Menu, 
   X,
   Home,
-  FileSignature
+  FileSignature,
+  BarChart3,
+  Layers
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 
@@ -25,6 +27,7 @@ export default function Layout() {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: Home },
     { name: 'Documents', href: '/documents', icon: FileText },
+    { name: 'Templates', href: '/templates', icon: Layers },
     { name: 'Signing Requests', href: '/signing-requests', icon: FileSignature },
     { name: 'Upload', href: '/documents/upload', icon: Upload },
   ]

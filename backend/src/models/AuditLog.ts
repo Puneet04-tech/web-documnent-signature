@@ -5,6 +5,7 @@ export type AuditAction =
   | 'document_viewed'
   | 'document_downloaded'
   | 'document_deleted'
+  | 'document_recipients_added'
   | 'signature_added'
   | 'signature_removed'
   | 'signature_signed'
@@ -53,6 +54,7 @@ const AuditLogSchema: Schema = new Schema(
         'document_viewed',
         'document_downloaded',
         'document_deleted',
+        'document_recipients_added',
         'signature_added',
         'signature_removed',
         'signature_signed',

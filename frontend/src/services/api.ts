@@ -168,7 +168,7 @@ class ApiService {
   }
 
   async getDocumentForSigning(documentId: string, email: string): Promise<ApiResponse<{ document: any; recipient: any; signatures: any[] }>> {
-    const response = await this.client.get(`/signing-requests/document/${documentId}/${email}`);
+    const response = await this.client.get(`/signing-requests/sign-document/${documentId}/${email}`);
     return response.data;
   }
 
@@ -268,6 +268,20 @@ class ApiService {
     return response.data;
   }
 
+  // Recipient-specific API calls
+  async fillSignatureFieldAsRecipient(documentId: string, email: string, data: {
+    signatureData: string;
+    type: string;
+    page: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }): Promise<ApiResponse<{ signature: any; completed: boolean }>> {
+    const response = await this.client.post(`/signing-requests/sign-document/${documentId}/${email}/sign`, data);
+    return response.data;
+  }
+
   // Finalize API
   async finalizeDocument(docId: string): Promise<ApiResponse<{ document: any; signedFilePath: string; fieldsEmbedded: number }>> {
     const response = await this.client.post(`/finalize/${docId}/finalize`);
@@ -294,10 +308,59 @@ class ApiService {
       role: 'signer' | 'witness' | 'reviewer';
       message?: string;
       witnessFor?: string;
-      order?: number;
+      expiresAt?: string;
     }>;
+    order?: number;
+    reminderInterval?: number;
   }): Promise<ApiResponse<DocumentRecipient[]>> {
     const response = await this.client.post(`/document-recipients/documents/${documentId}/recipients`, data);
+    return response.data;
+  }
+
+  // Templates API
+  async getTemplates(filters?: { search?: string; category?: string }): Promise<ApiResponse<any[]>> {
+    const params = new URLSearchParams();
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.category) params.append('category', filters.category);
+    
+    const response = await this.client.get(`/templates?${params.toString()}`);
+    return response.data;
+  }
+
+  async getTemplate(id: string): Promise<ApiResponse<any>> {
+    const response = await this.client.get(`/templates/${id}`);
+    return response.data;
+  }
+
+  async createTemplate(data: {
+    name: string;
+    description: string;
+    fields: any[];
+    isPublic: boolean;
+    category: string;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.post('/templates', data);
+    return response.data;
+  }
+
+  async useTemplate(templateId: string, documentData: {
+    title: string;
+    description: string;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.post(`/templates/${templateId}/use`, documentData);
+    return response.data;
+  }
+
+  // Analytics API
+  async getDocumentAnalytics(documentId: string, timeRange: string): Promise<ApiResponse<any>> {
+    const response = await this.client.get(`/analytics/${documentId}?timeRange=${timeRange}`);
+    return response.data;
+  }
+
+  async exportAnalytics(documentId: string, timeRange: string): Promise<Blob> {
+    const response = await this.client.get(`/analytics/${documentId}/export?timeRange=${timeRange}`, {
+      responseType: 'blob'
+    });
     return response.data;
   }
 

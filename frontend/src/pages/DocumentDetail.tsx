@@ -106,6 +106,10 @@ export default function DocumentDetail() {
             <Users className="h-4 w-4" />
             Manage Recipients
           </Link>
+          <Link to={`/documents/${id}/analytics`} className="btn-secondary flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Analytics
+          </Link>
           <button onClick={handleDelete} className="btn-danger flex items-center gap-2">
             <Trash2 className="h-4 w-4" />
           </button>

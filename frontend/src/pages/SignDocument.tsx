@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import React, { useState, useRef, useEffect } from 'react'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Document as PDFDoc, Page as PDFPage, pdfjs } from 'react-pdf'
 import {
@@ -28,6 +28,7 @@ import toast from 'react-hot-toast'
 import api from '../services/api'
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css'
 import 'react-pdf/dist/esm/Page/TextLayer.css'
+import { ApiResponse } from '@/types'
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`
 
@@ -295,6 +296,18 @@ function TextInputModal({
 
 export default function SignDocument() {
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
+  const email = searchParams.get('email')
+  
+  // Fallback: if id is undefined, try to extract from URL path
+  const documentId = id || window.location.pathname.split('/').pop()
+  
+  console.log('=== SIGNDOCUMENT DEBUG ===');
+  console.log('isDocumentRecipient:', !!email);
+  console.log('id from params:', id);
+  console.log('id from path:', documentId);
+  console.log('email:', email);
+
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [numPages, setNumPages] = useState(0)
@@ -312,22 +325,95 @@ export default function SignDocument() {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
 
+  // Determine if this is a document recipient signing flow
+  const isDocumentRecipient = !!email
+
+  console.log('=== SIGNDOCUMENT DEBUG ===');
+  console.log('isDocumentRecipient:', isDocumentRecipient);
+  console.log('id:', id);
+  console.log('email:', email);
+
   const { data: docData, isLoading } = useQuery({
-    queryKey: ['document', id],
-    queryFn: () => api.getDocument(id!),
-    enabled: !!id,
-  })
+    queryKey: isDocumentRecipient ? ['document-signing', documentId, email] : ['document', documentId],
+    queryFn: () => {
+      console.log('=== API CALL ===');
+      console.log('Calling:', isDocumentRecipient ? 
+        `getDocumentForSigning(${documentId}, ${email})` : 
+        `getDocument(${documentId})`
+      );
+      return isDocumentRecipient ? 
+        api.getDocumentForSigning(documentId!, email!) : 
+        api.getDocument(documentId!);
+    },
+    enabled: !!documentId,
+  }) as any
+
+  // Debug: Log the document data when it arrives
+  useEffect(() => {
+    if (docData) {
+      console.log('=== DOCUMENT DATA RECEIVED ===');
+      console.log('Document data:', docData);
+      console.log('Fields in document data:', docData?.data?.fields);
+      console.log('Number of fields:', docData?.data?.fields?.length);
+    }
+  }, [docData])
 
   const { data: fieldsData } = useQuery({
-    queryKey: ['signatureFields', id],
-    queryFn: () => api.getSignatureFields(id!),
-    enabled: !!id,
+    queryKey: ['signatureFields', documentId],
+    queryFn: () => api.getSignatureFields(documentId!),
+    enabled: !!documentId && !isDocumentRecipient, // Only for document owners, not recipients
   })
+
+  // For document recipients, use fields from document data
+  const recipientFields = isDocumentRecipient ? docData?.data?.fields : null
+
+  // Set fields directly when data changes
+  useEffect(() => {
+    if (isDocumentRecipient && recipientFields) {
+      console.log('=== SETTING RECIPIENT FIELDS ===');
+      console.log('Recipient fields:', recipientFields);
+      setFields(recipientFields)
+    } else if (!isDocumentRecipient && fieldsData?.data?.fields) {
+      console.log('=== SETTING OWNER FIELDS ===');
+      console.log('Fields data:', fieldsData.data.fields);
+      setFields(fieldsData.data.fields)
+    }
+  }, [recipientFields, fieldsData?.data?.fields, isDocumentRecipient])
+
+  // Add a test field for debugging
+  useEffect(() => {
+    if (isDocumentRecipient && documentId && fields.length === 0) {
+      console.log('=== ADDING TEST FIELD ===');
+      const testField: any = {
+        _id: 'test-field-123',
+        document: documentId,
+        page: 1,
+        x: 100,
+        y: 100,
+        width: 150,
+        height: 50,
+        type: 'signature',
+        label: 'Test Signature',
+        assignedTo: 'me',
+        required: true,
+        value: null,
+        signer: null,
+        signingRequest: null,
+        status: 'pending',
+        placeholder: null,
+        linkedFieldId: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      console.log('Adding test field:', testField);
+      setFields([testField]);
+    }
+  }, [isDocumentRecipient, documentId, fields.length])
 
   const createFieldMutation = useMutation({
     mutationFn: (data: any) => api.createSignatureField(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['signatureFields', id] })
+      queryClient.invalidateQueries({ queryKey: ['signatureFields', documentId] })
       toast.success('Field added. Click on it to fill.')
     },
     onError: (err: any) => {
@@ -336,37 +422,71 @@ export default function SignDocument() {
   })
 
   const fillFieldMutation = useMutation({
-    mutationFn: ({ fieldId, value, type }: { fieldId: string; value: string; type: string }) => 
-      api.fillSignatureField({ fieldId, value, type, signatureData: value }),
+    mutationFn: async ({ fieldId, value, type }: { fieldId: string; value: string; type: string }): Promise<ApiResponse<{ field: any }>> => {
+      if (isDocumentRecipient) {
+        // Use recipient-specific API
+        const field = fields.find(f => f._id === fieldId);
+        if (!field) throw new Error('Field not found');
+        
+        const result = await api.fillSignatureFieldAsRecipient(documentId!, email!, {
+          signatureData: value,
+          type: 'drawn', // Fixed: Use 'drawn' instead of 'signature' to match backend enum
+          page: field.page,
+          x: field.x, // Use current field position (might be updated by dragging)
+          y: field.y, // Use current field position (might be updated by dragging)
+          width: field.width,
+          height: field.height
+        });
+        
+        // Transform the response to match expected type
+        return {
+          success: result.success,
+          message: result.message,
+          data: { field: result.data.signature }
+        };
+      } else {
+        // Use regular API for document owners
+        return api.fillSignatureField({ fieldId, value, type, signatureData: value });
+      }
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['signatureFields', id] })
-      toast.success('Field filled successfully!')
-      setSelectedField(null)
+      if (isDocumentRecipient) {
+        // For recipients, refresh document data to get updated signatures
+        queryClient.invalidateQueries({ queryKey: ['document-signing', documentId, email] });
+      } else {
+        // For owners, refresh signature fields
+        queryClient.invalidateQueries({ queryKey: ['signatureFields', documentId] });
+      }
+      toast.success('Field filled successfully!');
+      setSelectedField(null);
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message || 'Failed to fill field')
+      toast.error(err?.response?.data?.message || 'Failed to fill field');
     },
   })
 
   const updateFieldMutation = useMutation({
     mutationFn: ({ id: fieldId, data }: { id: string; data: any }) => api.updateSignatureField(fieldId, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['signatureFields', id] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['signatureFields', documentId] }),
   })
 
   const deleteFieldMutation = useMutation({
     mutationFn: (fieldId: string) => api.deleteSignatureField(fieldId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['signatureFields', id] })
+      queryClient.invalidateQueries({ queryKey: ['signatureFields', documentId] })
       toast.success('Field deleted successfully!')
       setSelectedField(null)
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to delete field')
     },
   })
 
   // Finalize mutation
   const finalizeMutation = useMutation({
-    mutationFn: () => api.finalizeDocument(id!),
+    mutationFn: () => api.finalizeDocument(documentId!),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['document', id] })
+      queryClient.invalidateQueries({ queryKey: ['document', documentId] })
       toast.success(`Document finalized! ${data.data.fieldsEmbedded} fields embedded into PDF.`)
     },
     onError: (err: any) => {
@@ -375,42 +495,70 @@ export default function SignDocument() {
   })
 
   const handleFinalize = () => {
-    if (!id) return
+    if (!documentId) return
     finalizeMutation.mutate()
   }
 
   const handleDownloadSigned = async () => {
-    if (!id) return
+    if (!documentId) return
     try {
-      // Use fetch with auth token for download
-      const token = localStorage.getItem('accessToken')
-      const response = await fetch(`/api/docs/${id}/download?signed=true`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      if (!response.ok) throw new Error('Download failed')
-      
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = docData?.data?.document?.originalName || 'signed-document.pdf'
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-      toast.success('Signed PDF downloaded!')
+      // Use different approach for recipients vs owners
+      if (isDocumentRecipient) {
+        // For recipients, use the public download endpoint
+        const response = await fetch(`/api/signing-requests/sign-document/${documentId}/${email}/download`, {
+          method: 'GET'
+        })
+        if (!response.ok) throw new Error('Download failed')
+        
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = docData?.data?.document?.originalName || 'signed-document.pdf'
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        toast.success('Signed PDF downloaded!')
+      } else {
+        // Use fetch with auth token for owners
+        const token = localStorage.getItem('accessToken')
+        const response = await fetch(`/api/docs/${documentId}/download?signed=true`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        if (!response.ok) throw new Error('Download failed')
+        
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = docData?.data?.document?.originalName || 'signed-document.pdf'
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        toast.success('Signed PDF downloaded!')
+      }
     } catch (err) {
       toast.error('Failed to download signed PDF')
     }
   }
 
   useEffect(() => {
-    if (fieldsData?.data?.fields) {
-      setFields(fieldsData.data.fields)
+    console.log('=== RENDERING DEBUG ===');
+    console.log('Current fields:', fields);
+    console.log('Current page:', pageNumber);
+    const pageFields = fields.filter(f => f.page === pageNumber);
+    console.log('Fields for current page:', pageFields);
+    if (pageFields.length > 0) {
+      console.log('Field details:', pageFields[0]);
+      console.log('Field position:', { x: pageFields[0].x, y: pageFields[0].y });
+      console.log('Field size:', { width: pageFields[0].width, height: pageFields[0].height });
+      console.log('Field style:', getFieldStyle(pageFields[0]));
     }
-  }, [fieldsData])
+  }, [fields, pageNumber])
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages)
@@ -424,6 +572,14 @@ export default function SignDocument() {
 
   const handlePageClick = (e: React.MouseEvent) => {
     if (!isPlacing || !selectedTool || !containerRef.current) return
+    
+    // Prevent field creation for document recipients
+    if (isDocumentRecipient) {
+      toast.error('Document recipients cannot add signature fields')
+      setIsPlacing(false)
+      setSelectedTool(null)
+      return
+    }
     
     const rect = containerRef.current.getBoundingClientRect()
     const x = e.clientX - rect.left
@@ -442,7 +598,7 @@ export default function SignDocument() {
     console.log('Creating field at:', { x, y, scale, normalizedX, normalizedY })
 
     createFieldMutation.mutate({
-      documentId: id,
+      documentId: documentId,
       page: pageNumber,
       x: normalizedX,
       y: normalizedY,
@@ -559,19 +715,30 @@ export default function SignDocument() {
       const newX = Math.max(0, field.x + scaledDeltaX)
       const newY = Math.max(0, field.y + scaledDeltaY)
       
-      // Debounce the updates - increased to 100ms to reduce API calls
-      if (dragTimeout) {
-        clearTimeout(dragTimeout)
+      // For recipients, update local state only (no backend call)
+      if (isDocumentRecipient) {
+        setFields(prevFields => 
+          prevFields.map(f => 
+            f._id === isDragging 
+              ? { ...f, x: newX, y: newY }
+              : f
+          )
+        )
+        setDragStart({ x: e.clientX, y: e.clientY })
+      } else {
+        // For owners, use backend update
+        // Debounce the updates - increased to 100ms to reduce API calls
+        if (dragTimeout) {
+          clearTimeout(dragTimeout)
+        }
+        
+        dragTimeout = setTimeout(() => {
+          updateFieldMutation.mutate({
+            id: isDragging,
+            data: { x: newX, y: newY }
+          })
+        }, 100) // Reduced from 16ms to 100ms to prevent 429 errors
       }
-      
-      dragTimeout = setTimeout(() => {
-        updateFieldMutation.mutate({
-          id: isDragging,
-          data: { x: newX, y: newY }
-        })
-      }, 100) // Reduced from 16ms to 100ms to prevent 429 errors
-      
-      setDragStart({ x: e.clientX, y: e.clientY })
     }
     
     if (isDragging) {
@@ -592,6 +759,11 @@ export default function SignDocument() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (selectedField && (e.key === 'Delete' || e.key === 'Backspace')) {
+        // Prevent recipients from deleting fields
+        if (isDocumentRecipient) {
+          return;
+        }
+        
         e.preventDefault()
         const field = fields.find(f => f._id === selectedField)
         if (field) {
@@ -604,7 +776,7 @@ export default function SignDocument() {
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [selectedField, fields])
+  }, [selectedField, fields, isDocumentRecipient])
 
   const getFieldStyle = (field: SignatureField) => {
     const isSelected = selectedField === field._id
@@ -612,14 +784,14 @@ export default function SignDocument() {
     const isFieldDragging = isDragging === field._id
     
     // Multiply by current scale for rendering
-    return {
+    const baseStyle = {
       position: 'absolute' as const,
       left: field.x * scale,
       top: field.y * scale,
       width: field.width * scale,
       height: field.height * scale,
       border: isSelected ? '3px solid #2563EB' : (isFilled ? '2px solid #22C55E' : '2px dashed #9CA3AF'),
-      backgroundColor: isSelected ? 'rgba(37, 99, 235, 0.1)' : (isFilled ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.8)'),
+      backgroundColor: isSelected ? 'rgba(37, 99, 235, 0.1)' : (isFilled ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.8)'), // Clean white background
       borderRadius: '4px',
       cursor: isPlacing ? 'default' : (isFieldDragging ? 'grabbing' : 'grab'),
       display: 'flex',
@@ -627,11 +799,14 @@ export default function SignDocument() {
       justifyContent: 'center',
       fontSize: field.type === 'initials' ? '20px' : '14px',
       overflow: 'hidden',
-      zIndex: isFieldDragging ? 1000 : 100, // Higher z-index for dragging
+      zIndex: isFieldDragging ? 1000 : 1000, // Higher z-index for debugging
       pointerEvents: 'auto' as const,
       userSelect: 'none' as const,
       touchAction: 'none' as const, // Prevent touch scrolling on mobile
     }
+    
+    console.log('Field style for', field._id, ':', baseStyle);
+    return baseStyle
   }
 
   const renderFieldContent = (field: SignatureField) => {
@@ -709,24 +884,28 @@ export default function SignDocument() {
             ))}
           </select>
 
-          <button
-            onClick={() => navigate(`/documents/${id}`)}
-            className="px-4 py-2 bg-white text-gray-800 rounded-lg hover:bg-gray-100 flex items-center gap-2"
-          >
-            <Send className="h-4 w-4" /> Send
-          </button>
+          {!isDocumentRecipient && (
+            <button
+              onClick={() => navigate(`/documents/${id}`)}
+              className="px-4 py-2 bg-white text-gray-800 rounded-lg hover:bg-gray-100 flex items-center gap-2"
+            >
+              <Send className="h-4 w-4" /> Send
+            </button>
+          )}
 
-          <button
-            onClick={handleFinalize}
-            disabled={finalizeMutation.isPending}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 disabled:opacity-50"
-          >
-            {finalizeMutation.isPending ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Finalizing...</>
-            ) : (
-              <><Check className="h-4 w-4" /> Finalize</>
-            )}
-          </button>
+          {!isDocumentRecipient && (
+            <button
+              onClick={handleFinalize}
+              disabled={finalizeMutation.isPending}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 disabled:opacity-50"
+            >
+              {finalizeMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Finalizing...</>
+              ) : (
+                <><Check className="h-4 w-4" /> Finalize</>
+              )}
+            </button>
+          )}
 
           {docData?.data?.document?.signedFilePath && (
             <button
@@ -743,35 +922,45 @@ export default function SignDocument() {
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar */}
         <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="font-semibold text-gray-900 text-lg">Field Types</h2>
-            <p className="text-sm text-gray-600 mt-1">Click a type, then click PDF to place it</p>
-          </div>
+          {!isDocumentRecipient && (
+            <>
+              <div className="p-4 border-b border-gray-200">
+                <h2 className="font-semibold text-gray-900 text-lg">Field Types</h2>
+                <p className="text-sm text-gray-600 mt-1">Click a type, then click PDF to place it</p>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {FIELD_TYPES.map((fieldType) => (
+                  <button
+                    key={fieldType.type}
+                    onClick={() => handleToolSelect(fieldType.type)}
+                    aria-pressed={selectedTool === fieldType.type}
+                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors ${
+                      selectedTool === fieldType.type 
+                        ? 'bg-blue-50 border-2 border-blue-500 text-blue-700' 
+                        : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent text-gray-700'
+                    } focus:outline-none focus:ring-2 focus:ring-blue-400`}
+                  >
+                    <div className={`p-2 rounded-lg ${
+                      selectedTool === fieldType.type ? 'bg-blue-100 text-blue-600' : 'text-gray-500'
+                    }`}>
+                      {fieldType.icon}
+                    </div>
+                    <div className="flex-1 text-left">
+                      <div className="font-medium">{fieldType.label}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           
-          <div className="flex-1 overflow-y-auto p-4 space-y-2">
-            {FIELD_TYPES.map((fieldType) => (
-              <button
-                key={fieldType.type}
-                onClick={() => handleToolSelect(fieldType.type)}
-                aria-pressed={selectedTool === fieldType.type}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors ${
-                  selectedTool === fieldType.type 
-                    ? 'bg-blue-50 border-2 border-blue-500 text-blue-700' 
-                    : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent text-gray-700'
-                } focus:outline-none focus:ring-2 focus:ring-blue-400`}
-              >
-                <div className={`p-2 rounded-lg ${
-                  selectedTool === fieldType.type ? 'bg-blue-100 text-blue-600' : 'text-gray-500'
-                }`}>
-                  {fieldType.icon}
-                </div>
-                <div>
-                  <div className="font-semibold text-sm">{fieldType.label}</div>
-                  <div className="text-xs text-gray-500">{fieldType.width}×{fieldType.height}px</div>
-                </div>
-              </button>
-            ))}
-          </div>
+          {isDocumentRecipient && (
+            <div className="p-4 border-b border-gray-200">
+              <h2 className="font-semibold text-gray-900 text-lg">Document Signing</h2>
+              <p className="text-sm text-gray-600 mt-1">Click on signature fields to sign the document</p>
+            </div>
+          )}
 
           {/* Instructions */}
           <div className="p-4 bg-gray-50 border-t border-gray-200">
@@ -791,7 +980,11 @@ export default function SignDocument() {
               ref={containerRef}
               className={`relative inline-block shadow-lg ${isPlacing ? 'cursor-crosshair' : 'cursor-default'}`}
               onClick={handlePageClick}
-              style={{ pointerEvents: isDragging ? 'none' : 'auto' }} // Disable PDF clicks during drag
+              style={{ 
+                pointerEvents: isDragging ? 'none' : 'auto',
+                border: '3px solid blue', // Add blue border for debugging
+                backgroundColor: 'rgba(0, 0, 255, 0.1)' // Add light blue background for debugging
+              }}
             >
               <PDFDoc
                 file={`/uploads/${docData?.data?.document?.fileName}`}
@@ -812,34 +1005,49 @@ export default function SignDocument() {
                 className="absolute inset-0 pointer-events-none"
                 style={{ zIndex: 50 }}
               >
+                {/* Coordinate display for debugging */}
+                <div style={{
+                  position: 'absolute',
+                  top: '10px',
+                  left: '10px',
+                  backgroundColor: 'white',
+                  padding: '10px',
+                  border: '2px solid black',
+                  zIndex: 10000,
+                  fontSize: '12px'
+                }}>
+                  Field Position: {fields.filter(f => f.page === pageNumber).map(f => `${Math.round(f.x)}, ${Math.round(f.y)}`).join(', ') || 'No fields'}
+                </div>
                 {fields.filter(f => f.page === pageNumber).map((field) => (
-                  <div
-                    key={field._id}
-                    style={{
-                      ...getFieldStyle(field),
-                      pointerEvents: 'auto',
-                    }}
-                    onMouseDown={(e) => handleMouseDown(field._id, e)}
-                    onClick={(e) => {
-                      if (!isDragging) {
-                        handleFieldClick(field, e)
-                      }
-                    }}
-                    className="hover:shadow-md transition-shadow"
-                  >
-                    {renderFieldContent(field)}
-                    
-                    {/* Delete button on hover for selected field */}
-                    {selectedField === field._id && !isDragging && (
-                      <button
-                        onClick={(e) => handleFieldDelete(field._id, e)}
-                        className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 z-10"
-                        title={`Delete ${field.type} field`}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    )}
-                  </div>
+                  <React.Fragment key={field._id}>
+                    {/* Actual field */}
+                    <div
+                      style={{
+                        ...getFieldStyle(field),
+                        pointerEvents: 'auto',
+                      }}
+                      onMouseDown={(e) => handleMouseDown(field._id, e)}
+                      onClick={(e) => {
+                        if (!isDragging) {
+                          handleFieldClick(field, e)
+                        }
+                      }}
+                      className="hover:shadow-md transition-shadow"
+                    >
+                      {renderFieldContent(field)}
+                      
+                      {/* Delete button on hover for selected field */}
+                      {selectedField === field._id && !isDragging && !isDocumentRecipient && (
+                        <button
+                          onClick={(e) => handleFieldDelete(field._id, e)}
+                          className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 z-10"
+                          title={`Delete ${field.type} field`}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  </React.Fragment>
                 ))}
               </div>
             </div>
@@ -937,8 +1145,9 @@ export default function SignDocument() {
 
                 <button
                   onClick={(e) => handleFieldDelete(currentField._id, e as any)}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center justify-center gap-2"
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center justify-center gap-2 disabled:opacity-50"
                   title={`Delete ${currentField.type} field`}
+                  disabled={isDocumentRecipient}
                 >
                   <Trash2 className="h-4 w-4" /> Delete
                 </button>

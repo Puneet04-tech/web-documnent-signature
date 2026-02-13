@@ -15,6 +15,8 @@ import PublicSign from './pages/PublicSign'
 import SigningRequests from './pages/SigningRequests'
 import DocumentRecipients from './pages/DocumentRecipients'
 import AuditLog from './pages/AuditLog'
+import Templates from './pages/Templates'
+import DocumentAnalytics from './pages/DocumentAnalytics'
 import NotFound from './pages/NotFound'
 
 // Protected Route Component
@@ -51,6 +53,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/sign/:token" element={<PublicSign />} />
+      <Route path="/sign-document/:documentId" element={<SignDocument />} />
 
       {/* Protected Routes */}
       <Route
@@ -67,6 +70,8 @@ function App() {
         <Route path="documents/:id" element={<DocumentDetail />} />
         <Route path="documents/:id/sign" element={<SignDocument />} />
         <Route path="documents/:id/recipients" element={<DocumentRecipients />} />
+        <Route path="documents/:id/analytics" element={<DocumentAnalytics />} />
+        <Route path="templates" element={<Templates />} />
         <Route path="signing-requests" element={<SigningRequests />} />
         <Route path="audit/:docId" element={<AuditLog />} />
       </Route>

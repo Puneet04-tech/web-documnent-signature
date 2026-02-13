@@ -11,6 +11,7 @@ interface RecipientForm {
   role: 'signer' | 'witness' | 'reviewer';
   message?: string;
   witnessFor?: string;
+  expiresAt?: string;
 }
 
 export default function DocumentRecipients() {
@@ -23,7 +24,9 @@ export default function DocumentRecipients() {
     email: '',
     name: '',
     role: 'signer',
-    message: ''
+    message: '',
+    expiresAt: '',
+    expiresInDays: '7' // Default 7 days
   });
 
   useEffect(() => {
@@ -34,7 +37,7 @@ export default function DocumentRecipients() {
     try {
       const response = await api.getDocumentRecipients(id!);
       if (response.success) {
-        setRecipients(response.data);
+        setRecipients(response.data.recipients || []);
       }
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to fetch recipients');
@@ -155,6 +158,16 @@ export default function DocumentRecipients() {
               />
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Expiry Date</label>
+              <input
+                type="datetime-local"
+                value={newRecipient.expiresAt || ''}
+                onChange={(e) => setNewRecipient({ ...newRecipient, expiresAt: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Leave empty for no expiry"
+              />
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
               <select
                 value={newRecipient.role}
@@ -175,6 +188,22 @@ export default function DocumentRecipients() {
                 rows={3}
                 placeholder="Add a message for the recipient..."
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Expires In (Days)</label>
+              <select
+                value={newRecipient.expiresInDays}
+                onChange={(e) => setNewRecipient({ ...newRecipient, expiresInDays: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="1">1 Day</option>
+                <option value="3">3 Days</option>
+                <option value="7">7 Days (Default)</option>
+                <option value="14">14 Days</option>
+                <option value="30">30 Days</option>
+                <option value="60">60 Days</option>
+                <option value="90">90 Days</option>
+              </select>
             </div>
           </div>
           <div className="flex justify-end gap-2 mt-4">
@@ -227,7 +256,7 @@ export default function DocumentRecipients() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {recipients.map((recipient) => (
+                {Array.isArray(recipients) && recipients.map((recipient) => (
                   <tr key={recipient._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">

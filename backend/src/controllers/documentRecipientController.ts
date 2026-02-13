@@ -1,11 +1,14 @@
 import { Request, Response } from 'express';
-import Document from '../models/Document';
-import DocumentRecipient from '../models/DocumentRecipient';
-import User from '../models/User';
+import { body } from 'express-validator';
+import { v4 as uuidv4 } from 'uuid';
+import * as fs from 'fs';
+import * as path from 'path';
+import { Document, DocumentRecipient, Signature, SignatureField, User } from '../models';
+import { AppError, asyncHandler } from '../utils/errorHandler';
+import { AuthRequest } from '../middleware/auth';
+import { createAuditLog } from '../middleware/audit';
 import { sendEmail } from '../services/emailService';
-import { IDocumentRecipient } from '../models/DocumentRecipient';
 
-// Extend Request type to include user
 interface AuthenticatedRequest extends Request {
   user?: {
     _id: string;
@@ -15,18 +18,58 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-// Get all recipients for a document
-export const getDocumentRecipients = async (req: AuthenticatedRequest, res: Response) => {
+interface IDocumentRecipient {
+  _id: string;
+  document: string;
+  email: string;
+  name: string;
+  role: string;
+  message: string;
+  witnessFor: string | null;
+  status: string;
+  signedAt: Date | null;
+  ipAddress: string;
+  userAgent: string;
+}
+
+const documentRecipientValidation = [
+  body('documentId').notEmpty().withMessage('Document ID is required'),
+  body('recipients').isArray({ min: 1 }).withMessage('At least one recipient is required'),
+  body('recipients.*.email').isEmail().withMessage('Valid email required for each recipient'),
+  body('recipients.*.name').trim().notEmpty().withMessage('Name required for each recipient'),
+  body('recipients.*.role').isIn(['signer', 'witness', 'reviewer']).withMessage('Valid role required for each recipient')
+];
+
+export const getDocumentRecipients = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { documentId } = req.params;
-    
+    const userId = req.user!._id;
+
+    // Check if document exists and user has permission
+    const document = await Document.findById(documentId);
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document not found'
+      });
+    }
+
+    // Check if user is the document owner
+    if (document.owner.toString() !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only document owners can view recipients'
+      });
+    }
+
+    // Get all recipients for this document
     const recipients = await DocumentRecipient.find({ document: documentId })
       .populate('witnessFor', 'name email')
       .sort({ order: 1 });
 
     res.json({
       success: true,
-      data: recipients
+      data: { recipients }
     });
   } catch (error: any) {
     res.status(500).json({
@@ -34,31 +77,19 @@ export const getDocumentRecipients = async (req: AuthenticatedRequest, res: Resp
       message: error.message
     });
   }
-};
+});
 
-// Add recipients to a document
-export const addDocumentRecipients = async (req: AuthenticatedRequest, res: Response) => {
+export const addDocumentRecipients = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { documentId } = req.params;
-    const { recipients } = req.body; // Array of { email, name, role, message, order }
+    const { recipients } = req.body;
+    const userId = req.user!._id;
 
-    console.log('Adding recipients:', {
-      documentId,
-      documentIdType: typeof documentId,
-      userId: req.user?._id,
-      userIdType: typeof req.user?._id,
-      userEmail: req.user?.email,
-      recipients
-    });
-
-    // Check if user is authenticated
-    if (!req.user?._id) {
-      console.log('No user ID found in request');
-      return res.status(401).json({
-        success: false,
-        message: 'User not authenticated'
-      });
-    }
+    console.log('=== ADDING DOCUMENT RECIPIENTS ===');
+    console.log('Document ID received:', documentId);
+    console.log('Document ID type:', typeof documentId);
+    console.log('User ID:', userId);
+    console.log('Recipients:', recipients);
 
     // Check if document exists and user has permission (only owners can add recipients)
     const document = await Document.findById(documentId);
@@ -71,72 +102,94 @@ export const addDocumentRecipients = async (req: AuthenticatedRequest, res: Resp
     }
 
     console.log('Document found:', {
-      documentId: document._id,
-      documentIdType: typeof document._id,
-      ownerId: document.owner,
-      ownerIdType: typeof document.owner,
-      userId: req.user?._id,
-      isOwner: document.owner.toString() === req.user?._id,
-      comparison: `"${document.owner.toString()}" === "${req.user?._id}"`
+      id: document._id,
+      title: document.title,
+      fileName: document.fileName
     });
 
-    if (document.owner.toString() !== req.user?._id) {
+    // Check if user is the document owner
+    if (document.owner.toString() !== userId) {
+      console.log('User is not document owner:', {
+        documentOwner: document.owner.toString(),
+        requestingUser: userId,
+        isOwner: false
+      });
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to modify this document. Only document owners can add recipients.'
+        message: 'Only document owners can add recipients'
       });
     }
 
+    console.log('User is document owner, proceeding to add recipients');
+
     // Create recipients
+    console.log('Creating recipients...');
     const newRecipients = await Promise.all(
       recipients.map(async (recipient: any) => {
-        const newRecipient = new DocumentRecipient({
+        console.log('Creating recipient:', recipient);
+        const newRecipient = await DocumentRecipient.create({
           document: documentId,
           email: recipient.email.toLowerCase(),
           name: recipient.name,
           role: recipient.role,
-          order: recipient.order || 0,
-          message: recipient.message,
+          message: recipient.message || '',
           witnessFor: recipient.witnessFor || null
         });
-        return await newRecipient.save();
+        console.log('Recipient created:', newRecipient);
+        return newRecipient;
       })
     );
+
+    console.log('All recipients created:', newRecipients);
 
     // Send emails to all recipients
-    await Promise.all(
-      newRecipients.map(async (recipient: IDocumentRecipient) => {
-        const subject = `Document Signature Request: ${document.title}`;
-        const body = `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #333;">Document Signature Request</h2>
-            <p>Hello ${recipient.name},</p>
-            <p>You have been requested to ${recipient.role} the document "<strong>${document.title}</strong>".</p>
-            ${recipient.message ? `<p><em>Message from sender:</em> ${recipient.message}</p>` : ''}
-            <p><strong>Your role:</strong> ${recipient.role}</p>
-            <p>Please click the link below to access the document:</p>
-            <a href="${process.env.FRONTEND_URL}/sign-document/${document._id}?email=${encodeURIComponent(recipient.email)}" 
-               style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block; margin: 16px 0;">
-              Sign Document
-            </a>
-            <p style="color: #666; font-size: 14px;">This link will expire in 30 days.</p>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-            <p style="color: #666; font-size: 12px;">This is an automated message. Please do not reply to this email.</p>
-          </div>
-        `;
+    console.log('Sending emails to recipients...');
+    try {
+      await Promise.all(
+        newRecipients.map(async (recipient: IDocumentRecipient) => {
+          console.log('Sending email to:', recipient.email);
+          const subject = `Document Signature Request: ${document.title}`;
+          const body = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #333;">Document Signature Request</h2>
+              <p>Hello ${recipient.name},</p>
+              <p>You have been requested to ${recipient.role} document "<strong>${document.title}</strong>".</p>
+              ${recipient.message ? `<p><em>Message from sender:</em> ${recipient.message}</p>` : ''}
+              <p><strong>Your role:</strong> ${recipient.role}</p>
+              <p>Please click of link below to access to document:</p>
+              <a href="${process.env.FRONTEND_URL}/sign-document/${documentId}?email=${encodeURIComponent(recipient.email)}" 
+                 style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block; margin: 16px 0;">
+                Sign Document
+              </a>
+              <p style="color: #666; font-size: 14px;">This link will expire in 30 days.</p>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+              <p style="color: #666; font-size: 12px;">This is an automated message. Please do not reply to this email.</p>
+            </div>
+          `;
 
-        await sendEmail(recipient.email, subject, body);
-      })
-    );
+          await sendEmail(recipient.email, subject, body);
+          console.log('Email sent successfully to:', recipient.email);
+        })
+      );
+      console.log('All emails sent successfully');
+    } catch (emailError) {
+      console.error('Error sending emails:', emailError);
+      // Continue even if email fails
+    }
 
-    // Update document status to pending
-    document.status = 'pending';
-    await document.save();
+    await createAuditLog({
+      user: userId,
+      document: documentId,
+      action: 'document_recipients_added',
+      ipAddress: req.ip || req.socket?.remoteAddress || 'unknown',
+      userAgent: req.headers['user-agent'] || 'unknown',
+      details: { recipientsCount: recipients.length }
+    });
 
     res.status(201).json({
       success: true,
-      data: newRecipients,
-      message: 'Recipients added and notified successfully'
+      message: 'Recipients added successfully',
+      data: { recipients: newRecipients }
     });
   } catch (error: any) {
     res.status(500).json({
@@ -144,10 +197,9 @@ export const addDocumentRecipients = async (req: AuthenticatedRequest, res: Resp
       message: error.message
     });
   }
-};
+});
 
-// Update recipient status
-export const updateRecipientStatus = async (req: AuthenticatedRequest, res: Response) => {
+export const updateRecipientStatus = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { recipientId } = req.params;
     const { status, ipAddress, userAgent } = req.body;
@@ -202,9 +254,8 @@ export const updateRecipientStatus = async (req: AuthenticatedRequest, res: Resp
       message: error.message
     });
   }
-};
+});
 
-// Delete recipient
 export const getPublicDocumentSigning = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { documentId, email } = req.params;
@@ -214,8 +265,123 @@ export const getPublicDocumentSigning = async (req: AuthenticatedRequest, res: R
     console.log('Email:', email);
     console.log('Route:', req.originalUrl);
     console.log('Method:', req.method);
+    console.log('Headers:', req.headers);
+    console.log('Full URL:', req.protocol + '://' + req.get('host') + req.originalUrl);
+    console.log('User:', req.user);
+    console.log('Timestamp:', new Date().toISOString());
 
     // Find document and verify recipient exists
+    const document = await Document.findById(documentId);
+    if (!document) {
+      console.log('Document not found for ID:', documentId);
+      return res.status(404).json({
+        success: false,
+        message: 'Document not found'
+      });
+    }
+
+    console.log('Document found:', {
+      id: document._id,
+      title: document.title,
+      fileName: document.fileName
+    });
+
+    // Find recipient record
+    console.log('Looking for recipient with:', {
+      documentId,
+      email: email.toLowerCase().trim()
+    });
+
+    // First, let's see all recipients for this document
+    const allRecipients = await DocumentRecipient.find({ document: documentId });
+    console.log('All recipients for this document:', allRecipients.map(r => ({
+      id: r._id,
+      email: r.email,
+      name: r.name,
+      role: r.role,
+      status: r.status
+    })));
+
+    const recipient = await DocumentRecipient.findOne({
+      document: documentId,
+      email: email.toLowerCase().trim()
+    });
+
+    console.log('Recipient lookup:', {
+      documentId,
+      originalEmail: email,
+      normalizedEmail: email.toLowerCase().trim(),
+      recipient: recipient
+    });
+
+    if (!recipient) {
+      console.log('Recipient not found for email:', email);
+      return res.status(404).json({
+        success: false,
+        message: 'Document not found or you do not have permission to access it. Please check the email address and ensure you have been added as a recipient.'
+      });
+    }
+
+    console.log('Recipient found:', {
+      id: recipient._id,
+      name: recipient.name,
+      email: recipient.email,
+      role: recipient.role,
+      status: recipient.status
+    });
+
+    // Get existing signatures for this document
+    const signatures = await Signature.find({
+      document: documentId
+    }).populate('signer', 'name email');
+
+    console.log('Existing signatures found:', signatures.length);
+
+    // Get signature fields for this document (public access for recipients)
+    const signatureFields = await SignatureField.find({
+      document: documentId
+    }).sort({ page: 1, y: 1, x: 1 });
+
+    console.log('Signature fields found:', signatureFields.length);
+
+    res.json({
+      success: true,
+      data: {
+        document,
+        recipient,
+        signatures,
+        fields: signatureFields
+      }
+    });
+  } catch (error) {
+    console.error('Error getting document for signing:', error);
+    
+    // Type guard for error handling
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    const errorCode = error && typeof error === 'object' && 'code' in error ? error.code : undefined;
+    const errorStatus = error && typeof error === 'object' && 'status' in error ? error.status : undefined;
+    const errorName = error instanceof Error ? error.name : undefined;
+    
+    console.error('Error stack:', errorStack);
+    console.error('Error details:', {
+      message: errorMessage,
+      status: errorStatus,
+      code: errorCode,
+      name: errorName
+    });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const downloadSignedDocument = async (req: Request, res: Response) => {
+  try {
+    const { documentId, email } = req.params;
+
+    // Find document
     const document = await Document.findById(documentId);
     if (!document) {
       return res.status(404).json({
@@ -233,25 +399,41 @@ export const getPublicDocumentSigning = async (req: AuthenticatedRequest, res: R
     if (!recipient) {
       return res.status(404).json({
         success: false,
-        message: 'You are not authorized to sign this document'
+        message: 'Recipient not found'
       });
     }
 
-    // Get existing signatures for this document
-    const signatures = await Signature.find({
-      document: documentId
-    }).populate('signer', 'name email');
+    // Check if recipient has signed
+    if (recipient.status !== 'signed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Document must be signed before downloading'
+      });
+    }
 
-    res.json({
-      success: true,
-      data: {
-        document,
-        recipient,
-        signatures
-      }
-    });
+    // Use signed file if available, otherwise use original
+    const filePath = document.signedFilePath || document.filePath;
+    
+    // Construct full path
+    const fullPath = path.join(__dirname, '..', '..', filePath);
+    
+    if (!fs.existsSync(fullPath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'File not found'
+      });
+    }
+
+    // Set appropriate headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${document.originalName}"`);
+    
+    // Send file
+    const fileStream = fs.createReadStream(fullPath);
+    fileStream.pipe(res);
+
   } catch (error) {
-    console.error('Error getting document for signing:', error);
+    console.error('Error downloading document:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -259,12 +441,12 @@ export const getPublicDocumentSigning = async (req: AuthenticatedRequest, res: R
   }
 };
 
-export const signDocumentByRecipient = async (req: AuthenticatedRequest, res: Response) => {
+export const signDocumentByRecipient = async (req: Request, res: Response) => {
   try {
     const { documentId, email } = req.params;
     const { signatureData, type, page, x, y, width, height } = req.body;
 
-    console.log('Signing document by recipient:', { documentId, email, signatureData, type, page, x, y });
+    console.log('Signing document by recipient:', { documentId, email, signatureData, type, page, x, y, width, height });
 
     // Find document
     const document = await Document.findById(documentId);
@@ -297,6 +479,8 @@ export const signDocumentByRecipient = async (req: AuthenticatedRequest, res: Re
 
     // Create or find user
     let user = await User.findOne({ email });
+    
+    // Create a temporary user if not exists (for external signers)
     if (!user) {
       user = await User.create({
         name: recipient.name,
@@ -321,6 +505,35 @@ export const signDocumentByRecipient = async (req: AuthenticatedRequest, res: Re
       status: 'signed'
     });
 
+    // Create or update signature field for display on PDF
+    await SignatureField.findOneAndUpdate(
+      {
+        document: documentId,
+        assignedTo: email.toLowerCase(),
+        page
+      },
+      {
+        document: documentId,
+        page,
+        x,
+        y,
+        width: width || 150,
+        height: height || 50,
+        type: 'signature',
+        label: 'Signature',
+        assignedTo: email.toLowerCase(),
+        required: true,
+        value: signatureData,
+        signer: user._id,
+        status: 'signed',
+        signature: signature._id
+      },
+      {
+        upsert: true,
+        new: true
+      }
+    );
+
     // Update recipient status
     recipient.status = 'signed';
     recipient.signedAt = new Date();
@@ -335,6 +548,13 @@ export const signDocumentByRecipient = async (req: AuthenticatedRequest, res: Re
       await document.save();
     }
 
+    console.log('Document signed successfully:', {
+      signatureId: signature._id,
+      recipientStatus: recipient.status,
+      documentStatus: document.status,
+      allSigned
+    });
+
     res.json({
       success: true,
       message: 'Document signed successfully',
@@ -345,6 +565,18 @@ export const signDocumentByRecipient = async (req: AuthenticatedRequest, res: Re
     });
   } catch (error) {
     console.error('Error signing document:', error);
+    
+    // Type guard to safely access error properties
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    console.error('Error stack:', errorStack);
+    console.error('Error details:', {
+      message: errorMessage,
+      status: error && typeof error === 'object' && 'status' in error ? error.status : undefined,
+      code: error && typeof error === 'object' && 'code' in error ? error.code : undefined,
+      name: error instanceof Error ? error.name : undefined
+    });
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -352,7 +584,6 @@ export const signDocumentByRecipient = async (req: AuthenticatedRequest, res: Re
   }
 };
 
-// Delete recipient
 export const deleteRecipient = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { recipientId } = req.params;
