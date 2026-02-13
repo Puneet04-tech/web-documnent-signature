@@ -26,9 +26,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../services/api'
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css'
-import 'react-pdf/dist/esm/Page/TextLayer.css'
-import { ApiResponse } from '@/types'
+import { ApiResponse } from '../types'
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`
 

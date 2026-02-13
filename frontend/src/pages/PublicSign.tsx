@@ -5,8 +5,6 @@ import { Document as PDFDoc, Page as PDFPage, pdfjs } from 'react-pdf'
 import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../services/api'
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css'
-import 'react-pdf/dist/esm/Page/TextLayer.css'
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`
 

@@ -52,7 +52,7 @@ export default function Templates() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-4 mb-8">
         <div className="flex-1">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -63,19 +63,26 @@ export default function Templates() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search templates..."
-              className="block w-full pl-10 pr-3 py-2 border border-white/10 rounded-lg bg-white/5 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="block w-full pl-10 pr-4 py-3 border border-white/20 rounded-xl bg-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-400 transition-all duration-200 text-base"
             />
           </div>
         </div>
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="px-3 py-2 border border-white/10 rounded-lg bg-white/5 text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-        >
-          {categories.map((cat) => (
-            <option key={cat.value} value={cat.value}>{cat.label}</option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="appearance-none px-4 py-3 pr-8 border border-white/20 rounded-xl bg-white/10 text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-400 transition-all duration-200 text-base cursor-pointer hover:bg-white/20"
+          >
+            {categories.map((cat) => (
+              <option key={cat.value} value={cat.value} className="bg-gray-800 text-white">{cat.label}</option>
+            ))}
+          </select>
+          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+            <svg className="h-5 w-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
       </div>
 
       {/* Templates Grid */}
@@ -89,44 +96,46 @@ export default function Templates() {
           <p className="text-white/70">No templates found</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {templates.map((template: Template) => (
-            <div key={template._id} className="card p-6 hover:shadow-lg transition-shadow">
-              <div className="flex items-start justify-between mb-4">
+            <div key={template._id} className="card p-8 hover:shadow-2xl hover:scale-105 transition-all duration-300 border border-white/10 hover:border-primary-500/30 group">
+              <div className="flex items-start justify-between mb-6">
                 <div className="flex items-center">
-                  <FileText className="h-6 w-6 text-white/60 mr-2" />
+                  <div className="p-3 bg-primary-500/20 rounded-xl mr-4 group-hover:bg-primary-500/30 transition-colors duration-200">
+                    <FileText className="h-8 w-8 text-primary-400" />
+                  </div>
                   <div>
-                    <h3 className="text-lg font-medium text-white">{template.name}</h3>
-                    <p className="text-sm text-white/60">{template.fieldCount} fields</p>
+                    <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary-300 transition-colors duration-200">{template.name}</h3>
+                    <p className="text-base text-white/70 font-medium">{template.fieldCount} fields</p>
                   </div>
                 </div>
                 {template.isPublic && (
-                  <div className="flex items-center text-yellow-400">
-                    <Star className="h-4 w-4" />
+                  <div className="flex items-center px-3 py-1 bg-yellow-500/20 rounded-full border border-yellow-500/30">
+                    <Star className="h-5 w-5 text-yellow-400" />
                   </div>
                 )}
               </div>
               
-              <p className="text-white/70 text-sm mb-4 line-clamp-2">{template.description}</p>
+              <p className="text-white/80 text-base leading-relaxed mb-6 line-clamp-3 group-hover:text-white/90 transition-colors duration-200">{template.description}</p>
               
-              <div className="flex items-center justify-between text-sm text-white/60">
+              <div className="flex items-center justify-between text-sm text-white/60 mb-6">
                 <div className="flex items-center">
-                  <Clock className="h-4 w-4 mr-1" />
-                  {template.uses} uses
+                  <Clock className="h-4 w-4 mr-2" />
+                  <span className="font-medium">{template.uses} uses</span>
                 </div>
-                <span>{format(new Date(template.createdAt), 'MMM d, yyyy')}</span>
+                <span className="text-white/50 font-medium">{format(new Date(template.createdAt), 'MMM d, yyyy')}</span>
               </div>
               
-              <div className="mt-4 flex gap-2">
+              <div className="flex gap-3">
                 <Link
                   to={`/templates/${template._id}/use`}
-                  className="flex-1 inline-flex justify-center items-center px-3 py-2 border border-transparent rounded-lg text-xs font-medium text-white bg-primary-600 hover:bg-primary-700"
+                  className="flex-1 inline-flex justify-center items-center px-4 py-3 border border-transparent rounded-xl text-base font-semibold text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200 group-hover:shadow-lg"
                 >
                   Use Template
                 </Link>
                 <Link
                   to={`/templates/${template._id}/preview`}
-                  className="inline-flex justify-center items-center px-3 py-2 border border-white/10 rounded-lg text-xs font-medium text-white/80 hover:bg-white/10"
+                  className="inline-flex justify-center items-center px-4 py-3 border border-white/20 rounded-xl text-base font-medium text-white/80 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
                 >
                   Preview
                 </Link>
