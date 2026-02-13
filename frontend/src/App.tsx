@@ -16,6 +16,7 @@ import SigningRequests from './pages/SigningRequests'
 import DocumentRecipients from './pages/DocumentRecipients'
 import AuditLog from './pages/AuditLog'
 import Templates from './pages/Templates'
+import CreateTemplate from './pages/CreateTemplate'
 import DocumentAnalytics from './pages/DocumentAnalytics'
 import NotFound from './pages/NotFound'
 
@@ -72,6 +73,7 @@ function App() {
         <Route path="documents/:id/recipients" element={<DocumentRecipients />} />
         <Route path="documents/:id/analytics" element={<DocumentAnalytics />} />
         <Route path="templates" element={<Templates />} />
+        <Route path="templates/create" element={<CreateTemplate />} />
         <Route path="signing-requests" element={<SigningRequests />} />
         <Route path="audit/:docId" element={<AuditLog />} />
       </Route>
