@@ -29,6 +29,8 @@ const transporter = nodemailer.createTransport({
 export const sendSigningRequestEmail = async (data: SigningRequestEmailData): Promise<void> => {
   const { to, signerName, documentTitle, ownerName, message, subject, signingUrl, fields } = data;
 
+  console.log('Email data received:', { to, signerName, documentTitle, fields });
+
   const emailSubject = subject || `Signature Request: ${documentTitle}`;
   
   const fieldsHtml = fields && fields.length > 0 ? `
@@ -46,6 +48,8 @@ export const sendSigningRequestEmail = async (data: SigningRequestEmailData): Pr
       </ul>
     </div>
   ` : '';
+
+  console.log('Fields HTML:', fieldsHtml);
 
   const htmlContent = `
     <!DOCTYPE html>

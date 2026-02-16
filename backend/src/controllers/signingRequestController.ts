@@ -69,18 +69,23 @@ export const signingRequestController = {
     await document.save();
 
     // Send emails to signers
-    // Fetch signature fields for this document
+    // Fetch all signature fields for this document
+    console.log('Fetching fields for document:', documentId);
     const signatureFields = await SignatureField.find({ 
-      document: documentId,
-      assignedTo: { $in: processedSigners.map((s: any) => s.email) }
+      document: documentId
     });
+    console.log('Found signature fields:', signatureFields.length, signatureFields);
 
     for (const signer of processedSigners) {
       try {
-        // Get fields assigned to this signer
-        const signerFields = signatureFields.filter((field: any) => 
-          field.assignedTo === signer.email || !field.assignedTo
-        );
+        // Get all fields for this document
+        const documentFields = signatureFields.map((field: any) => ({
+          type: field.type,
+          label: field.label || field.type,
+          required: field.required
+        }));
+
+        console.log('Sending email to:', signer.email, 'with fields:', documentFields);
 
         await sendSigningRequestEmail({
           to: signer.email,
@@ -90,11 +95,7 @@ export const signingRequestController = {
           message,
           subject,
           signingUrl: `${process.env.FRONTEND_URL}/sign/${token}?email=${encodeURIComponent(signer.email)}`,
-          fields: signerFields.map((field: any) => ({
-            type: field.type,
-            label: field.label,
-            required: field.required
-          }))
+          fields: documentFields
         });
       } catch (error) {
         console.error(`Failed to send email to ${signer.email}:`, error);
