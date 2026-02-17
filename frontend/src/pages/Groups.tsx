@@ -58,7 +58,9 @@ export default function Groups() {
     queryFn: () => api.getDocuments(),
     select: (response) => {
       console.log('Documents API response:', response);
-      const docs = response.data?.data || response.data || [];
+      const docs = Array.isArray(response?.data?.data) ? response.data.data : 
+                   Array.isArray(response?.data) ? response.data : 
+                   Array.isArray(response) ? response : [];
       console.log('Parsed documents:', docs);
       return docs;
     }
@@ -436,7 +438,7 @@ export default function Groups() {
                   required
                 >
                   <option value="">Select a document</option>
-                  {documents?.map((doc: any) => (
+                  {Array.isArray(documents) && documents.map((doc: any) => (
                     <option key={doc._id} value={doc._id}>
                       {doc.title}
                     </option>
