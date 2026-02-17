@@ -56,7 +56,12 @@ export default function Groups() {
   const { data: documents } = useQuery({
     queryKey: ['documents'],
     queryFn: () => api.getDocuments(),
-    select: (response) => response.data?.data || []
+    select: (response) => {
+      console.log('Documents API response:', response);
+      const docs = response.data?.data || response.data || [];
+      console.log('Parsed documents:', docs);
+      return docs;
+    }
   })
 
   const createGroupMutation = useMutation({
