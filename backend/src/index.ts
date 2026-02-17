@@ -19,6 +19,7 @@ import auditRoutes from './routes/audit';
 import documentRecipientRoutes from './routes/documentRecipients';
 import finalizeRoutes from './routes/finalize';
 import templateRoutes from './routes/templates';
+import groupSigningRoutes from './routes/groupSigning';
 
 // Create Express app
 const app: Application = express();
@@ -71,6 +72,7 @@ app.use('/api/audit', auditRoutes);
 app.use('/api/document-recipients', documentRecipientRoutes);
 app.use('/api/finalize', finalizeRoutes);
 app.use('/api/templates', templateRoutes);
+app.use('/api/groups', groupSigningRoutes);
 
 // 404 handler
 app.use((_req: Request, _res: Response, next: NextFunction) => {

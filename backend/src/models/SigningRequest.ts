@@ -13,6 +13,11 @@ export interface ISignerInfo {
   status: 'pending' | 'signed' | 'rejected';
 }
 
+export interface IGroupSigning {
+  enabled: boolean;
+  groupId?: mongoose.Types.ObjectId;
+}
+
 export interface ISigningRequest extends Document {
   document: mongoose.Types.ObjectId;
   owner: mongoose.Types.ObjectId;
@@ -26,6 +31,7 @@ export interface ISigningRequest extends Document {
   completedAt?: Date;
   currentSignerIndex: number;
   reminderSentAt?: Date;
+  groupSigning?: IGroupSigning;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -123,6 +129,17 @@ const SigningRequestSchema: Schema = new Schema(
     reminderSentAt: {
       type: Date,
       default: null
+    },
+    groupSigning: {
+      enabled: {
+        type: Boolean,
+        default: false
+      },
+      groupId: {
+        type: Schema.Types.ObjectId,
+        ref: 'SigningGroup',
+        default: null
+      }
     }
   },
   {

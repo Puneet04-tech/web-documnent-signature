@@ -368,6 +368,56 @@ class ApiService {
     const response = await this.client.delete(`/document-recipients/recipients/${recipientId}`);
     return response.data;
   }
+
+  // Group Signing API
+  async getGroups(params?: { search?: string; page?: number; limit?: number }): Promise<ApiResponse<any>> {
+    const queryParams = new URLSearchParams();
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    
+    const response = await this.client.get(`/groups?${queryParams}`);
+    return response.data;
+  }
+
+  async createSigningGroup(data: {
+    name: string;
+    description?: string;
+    isPublic?: boolean;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.post('/groups', data);
+    return response.data;
+  }
+
+  async addGroupMember(groupId: string, data: {
+    email: string;
+    name: string;
+    role?: 'leader' | 'member';
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.post(`/groups/${groupId}/members`, data);
+    return response.data;
+  }
+
+  async removeGroupMember(groupId: string, memberId: string): Promise<ApiResponse<any>> {
+    const response = await this.client.delete(`/groups/${groupId}/members/${memberId}`);
+    return response.data;
+  }
+
+  async createGroupSigningRequest(groupId: string, data: {
+    documentId: string;
+    message?: string;
+    subject?: string;
+    signingOrder?: 'sequential' | 'parallel';
+    expiresInDays?: number;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.post(`/groups/${groupId}/signing-requests`, data);
+    return response.data;
+  }
+
+  async getGroupSigningRequests(groupId: string): Promise<ApiResponse<any>> {
+    const response = await this.client.get(`/groups/${groupId}/signing-requests`);
+    return response.data;
+  }
 }
 
 export const api = new ApiService();

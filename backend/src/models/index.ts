@@ -5,3 +5,4 @@ export { default as SignatureField } from './SignatureField';
 export { default as AuditLog } from './AuditLog';
 export { default as SigningRequest } from './SigningRequest';
 export { default as DocumentRecipient } from './DocumentRecipient';
+export { default as SigningGroup } from './SigningGroup';

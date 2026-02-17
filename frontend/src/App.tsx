@@ -20,6 +20,7 @@ import CreateTemplate from './pages/CreateTemplate'
 import UseTemplate from './pages/UseTemplate'
 import TemplatePreview from './pages/TemplatePreview'
 import DocumentAnalytics from './pages/DocumentAnalytics'
+import Groups from './pages/Groups'
 import NotFound from './pages/NotFound'
 
 // Protected Route Component
@@ -78,6 +79,7 @@ function App() {
         <Route path="templates/create" element={<CreateTemplate />} />
         <Route path="templates/:id/use" element={<UseTemplate />} />
         <Route path="templates/:id/preview" element={<TemplatePreview />} />
+        <Route path="groups" element={<Groups />} />
         
         <Route path="signing-requests" element={<SigningRequests />} />
         <Route path="audit/:docId" element={<AuditLog />} />

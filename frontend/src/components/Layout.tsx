@@ -8,7 +8,8 @@ import {
   X,
   Home,
   FileSignature,
-  Layers
+  Layers,
+  Users
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 
@@ -27,6 +28,7 @@ export default function Layout() {
     { name: 'Dashboard', href: '/', icon: Home },
     { name: 'Documents', href: '/documents', icon: FileText },
     { name: 'Templates', href: '/templates', icon: Layers },
+    { name: 'Groups', href: '/groups', icon: Users },
     { name: 'Signing Requests', href: '/signing-requests', icon: FileSignature },
     { name: 'Upload', href: '/documents/upload', icon: Upload },
   ]
