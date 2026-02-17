@@ -53,16 +53,18 @@ export default function Groups() {
     select: (response) => response.data
   })
 
-  const { data: documents } = useQuery({
+  const { data: documents, error: documentsError, isLoading: documentsLoading } = useQuery({
     queryKey: ['documents'],
     queryFn: () => api.getDocuments(),
     select: (response) => {
-      console.log('Documents API response:', response);
-      const docs = Array.isArray(response?.data?.data) ? response.data.data : 
-                   Array.isArray(response?.data) ? response.data : 
-                   Array.isArray(response) ? response : [];
-      console.log('Parsed documents:', docs);
-      return docs;
+      console.log('Documents API response in Groups:', response);
+      // Documents page expects response.data, so let's try that first
+      if (response?.data) {
+        const docs = Array.isArray(response.data) ? response.data : response.data?.data || [];
+        console.log('Parsed documents:', docs);
+        return docs;
+      }
+      return [];
     }
   })
 
@@ -436,8 +438,16 @@ export default function Groups() {
                   onChange={(e) => setSigningRequest(prev => ({ ...prev, documentId: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
+                  disabled={documentsLoading}
                 >
-                  <option value="">Select a document</option>
+                  <option value="">
+                    {documentsLoading ? 'Loading documents...' : 'Select a document'}
+                  </option>
+                  {Array.isArray(documents) && documents.length === 0 && !documentsLoading && (
+                    <option value="" disabled>
+                      No documents available. Please upload a document first.
+                    </option>
+                  )}
                   {Array.isArray(documents) && documents.map((doc: any) => (
                     <option key={doc._id} value={doc._id}>
                       {doc.title}
