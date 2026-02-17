@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Users, Plus, Settings, Trash2, UserPlus, Crown, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -34,15 +34,29 @@ export default function Groups() {
   const [search, setSearch] = useState('')
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [showAddMemberForm, setShowAddMemberForm] = useState(false)
+  const [showSigningRequestForm, setShowSigningRequestForm] = useState(false)
   const [selectedGroup, setSelectedGroup] = useState<SigningGroup | null>(null)
   const [newGroup, setNewGroup] = useState({ name: '', description: '', isPublic: false })
-  const [newMember, setNewMember] = useState({ email: '', name: '', role: 'member' })
+  const [newMember, setNewMember] = useState({ email: '', name: '', role: 'member' as 'leader' | 'member' })
+  const [signingRequest, setSigningRequest] = useState({
+    documentId: '',
+    message: '',
+    subject: '',
+    signingOrder: 'parallel' as 'parallel' | 'sequential',
+    expiresInDays: 7
+  })
   const queryClient = useQueryClient()
 
   const { data: groups, isLoading } = useQuery({
     queryKey: ['groups', search],
     queryFn: () => api.getGroups({ search }),
     select: (response) => response.data
+  })
+
+  const { data: documents } = useQuery({
+    queryKey: ['documents'],
+    queryFn: () => api.getDocuments(),
+    select: (response) => response.data?.data || []
   })
 
   const createGroupMutation = useMutation({
@@ -84,6 +98,27 @@ export default function Groups() {
     }
   })
 
+  const createSigningRequestMutation = useMutation({
+    mutationFn: ({ groupId, data }: { groupId: string; data: typeof signingRequest }) => 
+      api.createGroupSigningRequest(groupId, data),
+    onSuccess: () => {
+      toast.success('Signing request created successfully')
+      setShowSigningRequestForm(false)
+      setSigningRequest({
+        documentId: '',
+        message: '',
+        subject: '',
+        signingOrder: 'parallel',
+        expiresInDays: 7
+      })
+      setSelectedGroup(null)
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to create signing request')
+    }
+  })
+
   const handleCreateGroup = (e: React.FormEvent) => {
     e.preventDefault()
     if (!newGroup.name.trim()) {
@@ -103,13 +138,35 @@ export default function Groups() {
       toast.error('Please select a group')
       return
     }
-    addMemberMutation.mutate({ groupId: selectedGroup._id, data: newMember })
+    addMemberMutation.mutate({ 
+      groupId: selectedGroup._id, 
+      data: {
+        ...newMember,
+        role: newMember.role as 'leader' | 'member'
+      }
+    })
   }
 
   const handleRemoveMember = (groupId: string, memberId: string) => {
     if (window.confirm('Are you sure you want to remove this member?')) {
       removeMemberMutation.mutate({ groupId, memberId })
     }
+  }
+
+  const handleCreateSigningRequest = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!signingRequest.documentId) {
+      toast.error('Please select a document')
+      return
+    }
+    if (!selectedGroup) {
+      toast.error('Please select a group')
+      return
+    }
+    createSigningRequestMutation.mutate({ 
+      groupId: selectedGroup._id, 
+      data: signingRequest 
+    })
   }
 
   return (
@@ -343,6 +400,10 @@ export default function Groups() {
 
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <button
+                  onClick={() => {
+                    setSelectedGroup(group)
+                    setShowSigningRequestForm(true)
+                  }}
                   className="w-full px-3 py-2 border border-blue-600 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50"
                 >
                   Create Signing Request
@@ -350,6 +411,96 @@ export default function Groups() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Signing Request Modal */}
+      {showSigningRequestForm && selectedGroup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Create Signing Request for {selectedGroup.name}
+            </h2>
+            <form onSubmit={handleCreateSigningRequest} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Document</label>
+                <select
+                  value={signingRequest.documentId}
+                  onChange={(e) => setSigningRequest(prev => ({ ...prev, documentId: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option value="">Select a document</option>
+                  {documents?.map((doc: any) => (
+                    <option key={doc._id} value={doc._id}>
+                      {doc.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                <input
+                  type="text"
+                  value={signingRequest.subject}
+                  onChange={(e) => setSigningRequest(prev => ({ ...prev, subject: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Optional subject"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                <textarea
+                  value={signingRequest.message}
+                  onChange={(e) => setSigningRequest(prev => ({ ...prev, message: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  rows={3}
+                  placeholder="Optional message to signers"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Signing Order</label>
+                <select
+                  value={signingRequest.signingOrder}
+                  onChange={(e) => setSigningRequest(prev => ({ ...prev, signingOrder: e.target.value as 'parallel' | 'sequential' }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="parallel">Parallel (everyone can sign at once)</option>
+                  <option value="sequential">Sequential (sign in order)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Expires In (Days)</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={signingRequest.expiresInDays}
+                  onChange={(e) => setSigningRequest(prev => ({ ...prev, expiresInDays: parseInt(e.target.value) || 7 }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={createSigningRequestMutation.isPending}
+                  className="flex-1 px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {createSigningRequestMutation.isPending ? 'Creating...' : 'Create Request'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSigningRequestForm(false)
+                    setSelectedGroup(null)
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
