@@ -1,7 +1,8 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
 import { ApiResponse, AuthResponse, User, Document, Signature, SignatureType, SigningRequest, AuditLog, PaginatedResponse, DocumentRecipient } from '../types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Default to the deployed backend on Render if VITE_API_URL is not provided
+const API_URL = import.meta.env.VITE_API_URL || 'https://web-documnent-signature.onrender.com/api';
 
 class ApiService {
   private client: AxiosInstance;
