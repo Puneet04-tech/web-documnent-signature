@@ -36,9 +36,13 @@ export const config = {
   },
   
   cors: {
-    origins: process.env.CORS_ORIGINS?.split(',') || [
-      'http://localhost:5173',
-      'http://localhost:3000'
-    ]
+    origins: process.env.CORS_ORIGINS
+      ? process.env.CORS_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
+      : [
+          'http://localhost:5173',
+          'http://localhost:3000',
+          // default for the Netlify frontend deployment
+          'https://web-document.netlify.app'
+        ]
   }
 };
