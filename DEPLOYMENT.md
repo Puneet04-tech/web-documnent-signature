@@ -61,6 +61,17 @@ npm run build
 # Deploy the dist/ folder to Vercel or Netlify
 ```
 
+#### Environment variables for frontend
+When you configure the site in Netlify or Vercel you must set the API URL correctly. **Do not** append additional flags like `NODE_ENV=production` to this value – it should be only the base address of your backend API, for example:
+
+```
+VITE_API_URL=https://web-document-signature.onrender.com/api
+```
+
+Using anything else (e.g. `https://your-backend/api NODE_ENV=production`) will cause the client to request a malformed URL and CORS will fail.
+
+You can also set other VITE\\_ prefixed variables here if needed.
+
 ### Backend (Heroku/Railway/Render)
 ```bash
 cd backend
