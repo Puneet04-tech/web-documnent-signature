@@ -1,0 +1,36 @@
+services:
+  # Backend API Service
+  - type: web
+    name: document-signature-backend
+    env: node
+    repo: https://github.com/Puneet04-tech/web-documnent-signature.git
+    rootDir: backend
+    buildCommand: cd backend && npm install && npm run build
+    startCommand: cd backend && npm start
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        value: your-mongodb-connection-string
+      - key: JWT_SECRET
+        value: your-jwt-secret-key
+      - key: FRONTEND_URL
+        value: https://your-app-name.netlify.app
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: 587
+      - key: EMAIL_USER
+        value: your-email@gmail.com
+      - key: EMAIL_PASS
+        value: your-app-password
+
+  # Frontend Static Site  
+  - type: web
+    name: document-signature-frontend
+    env: static
+    repo: https://github.com/Puneet04-tech/web-documnent-signature.git
+    rootDir: frontend/dist
+    buildCommand: cd frontend && npm install && npm run build
+    plan: free
