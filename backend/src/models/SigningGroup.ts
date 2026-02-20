@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IGroupMember {
+  _id: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
   email: string;
   name: string;

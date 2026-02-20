@@ -1,7 +1,8 @@
 import { Response } from 'express';
 import { body } from 'express-validator';
+import { SigningGroup, Document, SigningRequest, User, SignatureField } from '../models';
 import { v4 as uuidv4 } from 'uuid';
-import { SigningGroup, Document, SigningRequest, User } from '../models';
+import mongoose from 'mongoose';
 import { AppError, asyncHandler } from '../utils/errorHandler';
 import { AuthRequest } from '../middleware/auth';
 import { createAuditLog } from '../middleware/audit';
@@ -119,13 +120,14 @@ export const addGroupMember = asyncHandler(async (req: AuthRequest, res: Respons
   }
 
   group.members.push({
+    _id: new mongoose.Types.ObjectId(),
     userId: user._id,
     email: user.email,
     name: name || user.name,
     role,
     joinedAt: new Date(),
     status: 'active'
-  });
+  } as any);
 
   await group.save();
 
@@ -162,7 +164,8 @@ export const removeGroupMember = asyncHandler(async (req: AuthRequest, res: Resp
   }
 
   // Cannot remove the owner/leader
-  const memberToRemove = group.members.id(memberId);
+  const memberToRemove = group.members.find((member: any) => member._id?.toString() === memberId);
+  
   if (!memberToRemove) {
     throw new AppError('Member not found', 404);
   }
@@ -171,7 +174,8 @@ export const removeGroupMember = asyncHandler(async (req: AuthRequest, res: Resp
     throw new AppError('Cannot remove group leader', 400);
   }
 
-  group.members.pull(memberId);
+  group.members = group.members.filter((member: any) => member._id?.toString() !== memberId);
+
   await group.save();
 
   await createAuditLog({
@@ -272,6 +276,10 @@ export const createGroupSigningRequest = asyncHandler(async (req: AuthRequest, r
   document.status = 'pending';
   await document.save();
 
+  // Fetch all signature fields for the document to include in email
+  const signatureFields = await SignatureField.find({ document: documentId });
+  console.log('Group signing - Found signature fields:', signatureFields.length);
+
   // Send emails to all signers
   for (const signer of signers) {
     try {
@@ -283,7 +291,11 @@ export const createGroupSigningRequest = asyncHandler(async (req: AuthRequest, r
         message,
         subject,
         signingUrl: `${process.env.FRONTEND_URL}/sign/${token}?email=${encodeURIComponent(signer.email)}`,
-        fields: [] // Add field logic here if needed
+        fields: signatureFields.map(field => ({
+          type: field.type,
+          label: field.label,
+          required: field.required
+        }))
       });
     } catch (error) {
       console.error(`Failed to send email to ${signer.email}:`, error);

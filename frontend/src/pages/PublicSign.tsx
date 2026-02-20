@@ -62,7 +62,7 @@ export default function PublicSign() {
   const { signingRequest, currentSigner } = data?.data || {}
 
   // Debug PDF file path
-  const pdfFilePath = `/uploads/${signingRequest?.document?.fileName}`
+  const pdfFilePath = `/uploads/${signingRequest?.document?.filePath?.split('\\').pop()}`
   console.log('PDF file path:', pdfFilePath)
   console.log('Document data:', signingRequest?.document)
 

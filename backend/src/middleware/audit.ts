@@ -6,6 +6,7 @@ import { AuditAction } from '../models/AuditLog';
 export interface AuditLogData {
   document?: string;
   signingRequest?: string;
+  signingGroup?: string;
   action: AuditAction;
   details?: Record<string, any>;
 }

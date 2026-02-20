@@ -16,7 +16,11 @@ export type AuditAction =
   | 'document_finalized'
   | 'user_login'
   | 'user_logout'
-  | 'user_registered';
+  | 'user_registered'
+  | 'group_created'
+  | 'member_added'
+  | 'member_removed'
+  | 'group_signing_request_created';
 
 export interface IAuditLog extends Document {
   document?: mongoose.Types.ObjectId;
