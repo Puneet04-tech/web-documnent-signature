@@ -76,9 +76,9 @@ export default function Groups() {
     select: (response) => response.data
   })
 
-  const { data: documents, error: documentsError, isLoading: documentsLoading, refetch: refetchDocuments } = useQuery({
-    queryKey: ['documents'],
-    queryFn: () => api.getDocuments(),
+  const { data: documents = [], error: documentsError, isLoading: documentsLoading, refetch: refetchDocuments } = useQuery({
+    queryKey: ['documents', { search: '', status: '', page: 1 }],
+    queryFn: () => api.getDocuments({ search: '', status: '', page: 1, limit: 10 }),
     select: (response) => {
       console.log('Documents API response in Groups:', response);
       // Documents page expects response.data, so let's try that first
@@ -479,12 +479,10 @@ export default function Groups() {
                     <option value="">
                       {documentsLoading ? 'Loading documents...' : 'Select a document'}
                     </option>
-                    {Array.isArray(documents) && documents.length === 0 && !documentsLoading && (
-                      <option value="" disabled>
-                        No documents available. Please upload a document first.
-                      </option>
+                    {documents.length === 0 && !documentsLoading && (
+                      <option value="" disabled>No documents available</option>
                     )}
-                    {Array.isArray(documents) && documents.map((doc: any) => (
+                    {documents.map((doc: any) => (
                       <option key={doc._id} value={doc._id}>
                         {doc.title}
                       </option>
