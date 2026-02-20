@@ -31,6 +31,19 @@ interface SigningGroup {
 }
 
 export default function Groups() {
+  // Check authentication on component mount
+  useState(() => {
+    const token = localStorage.getItem('accessToken');
+    const refreshToken = localStorage.getItem('refreshToken');
+    console.log('Auth check - Token exists:', !!token, 'Refresh token exists:', !!refreshToken);
+    
+    if (!token) {
+      console.log('No access token found, redirecting to login...');
+      window.location.href = '/login';
+      return;
+    }
+  })
+
   const [search, setSearch] = useState('')
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [showAddMemberForm, setShowAddMemberForm] = useState(false)
@@ -47,13 +60,23 @@ export default function Groups() {
   })
   const queryClient = useQueryClient()
 
+  // Test API call on component mount
+  useState(() => {
+    console.log('Groups component mounted - testing API...')
+    api.getDocuments().then(response => {
+      console.log('Direct API call result:', response)
+    }).catch(error => {
+      console.error('Direct API call error:', error)
+    })
+  })
+
   const { data: groups, isLoading } = useQuery({
     queryKey: ['groups', search],
     queryFn: () => api.getGroups({ search }),
     select: (response) => response.data
   })
 
-  const { data: documents, error: documentsError, isLoading: documentsLoading } = useQuery({
+  const { data: documents, error: documentsError, isLoading: documentsLoading, refetch: refetchDocuments } = useQuery({
     queryKey: ['documents'],
     queryFn: () => api.getDocuments(),
     select: (response) => {
@@ -182,13 +205,25 @@ export default function Groups() {
     <div className="max-w-6xl mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-white">Signing Groups</h1>
-        <button
-          onClick={() => setShowCreateForm(true)}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Create Group
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              localStorage.removeItem('accessToken');
+              localStorage.removeItem('refreshToken');
+              window.location.href = '/login';
+            }}
+            className="px-3 py-1 border border-red-600 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50"
+          >
+            🔓 Reset Auth
+          </button>
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create Group
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -433,27 +468,38 @@ export default function Groups() {
             <form onSubmit={handleCreateSigningRequest} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Document</label>
-                <select
-                  value={signingRequest.documentId}
-                  onChange={(e) => setSigningRequest(prev => ({ ...prev, documentId: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                  disabled={documentsLoading}
-                >
-                  <option value="">
-                    {documentsLoading ? 'Loading documents...' : 'Select a document'}
-                  </option>
-                  {Array.isArray(documents) && documents.length === 0 && !documentsLoading && (
-                    <option value="" disabled>
-                      No documents available. Please upload a document first.
+                <div className="flex gap-2">
+                  <select
+                    value={signingRequest.documentId}
+                    onChange={(e) => setSigningRequest(prev => ({ ...prev, documentId: e.target.value }))}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                    disabled={documentsLoading}
+                  >
+                    <option value="">
+                      {documentsLoading ? 'Loading documents...' : 'Select a document'}
                     </option>
-                  )}
-                  {Array.isArray(documents) && documents.map((doc: any) => (
-                    <option key={doc._id} value={doc._id}>
-                      {doc.title}
-                    </option>
-                  ))}
-                </select>
+                    {Array.isArray(documents) && documents.length === 0 && !documentsLoading && (
+                      <option value="" disabled>
+                        No documents available. Please upload a document first.
+                      </option>
+                    )}
+                    {Array.isArray(documents) && documents.map((doc: any) => (
+                      <option key={doc._id} value={doc._id}>
+                        {doc.title}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => refetchDocuments()}
+                    disabled={documentsLoading}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    title="Refresh documents"
+                  >
+                    🔄
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>

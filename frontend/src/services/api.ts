@@ -18,6 +18,7 @@ class ApiService {
     this.client.interceptors.request.use(
       (config) => {
         const token = localStorage.getItem('accessToken');
+        console.log('API Request:', config.method?.toUpperCase(), config.url, 'Token exists:', !!token);
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -28,11 +29,17 @@ class ApiService {
 
     // Response interceptor
     this.client.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        console.log('API Response:', response.config.method?.toUpperCase(), response.config.url, 'Status:', response.status);
+        return response;
+      },
       async (error: AxiosError<ApiResponse<any>>) => {
+        console.error('API Error:', error.config?.method?.toUpperCase(), error.config?.url, 'Status:', error.response?.status, 'Data:', error.response?.data);
+        
         const originalRequest = error.config;
         
         if (error.response?.status === 401 && originalRequest) {
+          console.log('401 Error detected, attempting token refresh...');
           const refreshToken = localStorage.getItem('refreshToken');
           
           if (refreshToken) {
@@ -47,12 +54,18 @@ class ApiService {
               
               originalRequest.headers.Authorization = `Bearer ${accessToken}`;
               return this.client(originalRequest);
-            } catch {
-              // Refresh failed, logout user
+            } catch (refreshError) {
+              console.error('Token refresh failed:', refreshError);
               localStorage.removeItem('accessToken');
               localStorage.removeItem('refreshToken');
               window.location.href = '/login';
+              return Promise.reject(refreshError);
             }
+          } else {
+            console.log('No refresh token, redirecting to login...');
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            window.location.href = '/login';
           }
         }
         
