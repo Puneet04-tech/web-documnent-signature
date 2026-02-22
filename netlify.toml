@@ -7,7 +7,7 @@
   NODE_VERSION = "18"
   # optionally ensure npm includes dev deps if you remove the explicit install above
   NPM_FLAGS = "--include=dev"
-  VITE_API_URL = "https://web-documnent-signature.onrender.com"
+  VITE_API_URL = "https://web-documnent-signature.onrender.com/api"
 
 [[redirects]]
   from = "/api/*"
