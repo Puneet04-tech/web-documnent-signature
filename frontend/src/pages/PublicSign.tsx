@@ -62,7 +62,9 @@ export default function PublicSign() {
   const { signingRequest, currentSigner } = data?.data || {}
 
   // Debug PDF file path
-  const pdfFilePath = `/uploads/${signingRequest?.document?.filePath?.split('\\').pop()}`
+  const pdfFilePath = signingRequest?.document?.filePath 
+    ? `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/uploads/${signingRequest.document.filePath.split('\\').pop()}`
+    : null;
   console.log('PDF file path:', pdfFilePath)
   console.log('Document data:', signingRequest?.document)
 
@@ -107,6 +109,7 @@ export default function PublicSign() {
             })
             setIsPlacing(false)
           }}>
+            {pdfFilePath ? (
             <PDFDoc
               file={pdfFilePath}
               onLoadSuccess={({ numPages }) => setNumPages(numPages)}
@@ -117,6 +120,14 @@ export default function PublicSign() {
             >
               <PDFPage pageNumber={pageNumber} scale={1.2} />
             </PDFDoc>
+          ) : (
+            <div className="w-full h-[600px] bg-white flex items-center justify-center text-center p-8">
+              <div>
+                <p className="text-red-600 mb-4">PDF document not available</p>
+                <p className="text-gray-600">Please contact the document owner for assistance.</p>
+              </div>
+            </div>
+          )}
             
             {signaturePos && (
               <div
