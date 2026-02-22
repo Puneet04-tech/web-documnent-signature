@@ -80,6 +80,30 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/pdf', pdfRoutes);
 app.use('/api/pdf-content', pdfContentRoutes);
 
+// Simple test route
+app.get('/api/test', (req, res) => {
+  res.json({ 
+    success: true, 
+    message: 'Backend is working',
+    timestamp: new Date().toISOString(),
+    routes: [
+      '/api/auth',
+      '/api/docs', 
+      '/api/signatures',
+      '/api/signature-fields',
+      '/api/signing-requests',
+      '/api/audit',
+      '/api/document-recipients',
+      '/api/finalize',
+      '/api/templates',
+      '/api/groups',
+      '/api/analytics',
+      '/api/pdf',
+      '/api/pdf-content'
+    ]
+  });
+});
+
 // 404 handler
 app.use((_req: Request, _res: Response, next: NextFunction) => {
   next(new AppError('Route not found', 404));
