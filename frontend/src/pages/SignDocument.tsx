@@ -1030,9 +1030,9 @@ export default function SignDocument() {
                 display: 'inline-block'
               }}
             >
-              {docData?.data?.document?.fileName && docData?.data?.document?.fileSize > 0 ? (
+              {docData?.data?.document?.filePath && docData?.data?.document?.fileSize > 0 ? (
                 <PDFDoc
-                  file={`/uploads/${docData?.data?.document?.fileName}`}
+                  file={`/uploads/${docData?.data?.document?.filePath?.split('\\').pop()}`}
                   onLoadSuccess={onDocumentLoadSuccess}
                   loading={<Loader2 className="h-8 w-8 animate-spin" />}
                 >
