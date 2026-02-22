@@ -5,7 +5,7 @@ import { Document } from '../models';
 import fs from 'fs/promises';
 import path from 'path';
 
-// Find and serve PDF by document ID
+// Find and serve PDF by document ID (authenticated)
 export const findAndServePdf = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { documentId } = req.params;
   const userId = req.user!._id;
@@ -23,7 +23,7 @@ export const findAndServePdf = asyncHandler(async (req: AuthRequest, res: Respon
     throw new AppError('Document not found', 404);
   }
 
-  // Try to find the file in uploads directory
+  // Try to find file in uploads directory
   const uploadsDir = path.join(process.cwd(), 'uploads');
   const files = await fs.readdir(uploadsDir);
   
@@ -46,7 +46,55 @@ export const findAndServePdf = asyncHandler(async (req: AuthRequest, res: Respon
     throw new AppError('PDF file not found in uploads directory', 404);
   }
 
-  // Read and serve the file
+  // Read and serve file
+  const filePath = path.join(uploadsDir, foundFile);
+  const fileBuffer = await fs.readFile(filePath);
+  
+  // Set headers
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Length', fileBuffer.length);
+  res.setHeader('Content-Disposition', `inline; filename="${foundFile}"`);
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  
+  // Send file
+  res.send(fileBuffer);
+});
+
+// Find and serve PDF by document ID (public for signing portal)
+export const findAndServePdfPublic = asyncHandler(async (req: any, res: Response) => {
+  const { documentId } = req.params;
+
+  // Find document (no ownership check for public access)
+  const document = await Document.findById(documentId);
+
+  if (!document) {
+    throw new AppError('Document not found', 404);
+  }
+
+  // Try to find file in uploads directory
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  const files = await fs.readdir(uploadsDir);
+  
+  // Try multiple file name patterns
+  const possibleNames = [
+    document.fileName,
+    document.originalName,
+    document.fileName?.replace('.pdf', '') + '.pdf'
+  ];
+  
+  let foundFile = null;
+  for (const name of possibleNames) {
+    if (files.includes(name)) {
+      foundFile = name;
+      break;
+    }
+  }
+  
+  if (!foundFile) {
+    throw new AppError('PDF file not found in uploads directory', 404);
+  }
+
+  // Read and serve file
   const filePath = path.join(uploadsDir, foundFile);
   const fileBuffer = await fs.readFile(filePath);
   
@@ -61,5 +109,6 @@ export const findAndServePdf = asyncHandler(async (req: AuthRequest, res: Respon
 });
 
 export const pdfFixController = {
-  findAndServePdf
+  findAndServePdf,
+  findAndServePdfPublic
 };
