@@ -1030,18 +1030,18 @@ export default function SignDocument() {
                 display: 'inline-block'
               }}
             >
-              {docData?.data?.document?.filePath && docData?.data?.document?.fileSize > 0 ? (
+              {docData?.data?.document?._id ? (
                 <PDFDoc
-                  file={`${import.meta.env.DEV ? 'http://localhost:5000' : (import.meta.env.VITE_BASE_URL || 'http://localhost:5000')}/${docData?.data?.document?.filePath}`}
+                  file={`${import.meta.env.DEV ? 'http://localhost:5000' : (import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000')}/api/pdf/public/${docData?.data?.document?._id}`}
                   onLoadSuccess={onDocumentLoadSuccess}
                   onSourceError={(error: Error) => {
                     console.error('PDF loading error:', error);
-                    const baseUrl = import.meta.env.DEV ? 'http://localhost:5000' : (import.meta.env.VITE_BASE_URL || 'http://localhost:5000');
-                    const fullUrl = `${baseUrl}/${docData?.data?.document?.filePath}`;
-                    console.error('VITE_BASE_URL:', import.meta.env.VITE_BASE_URL);
+                    const baseUrl = import.meta.env.DEV ? 'http://localhost:5000' : (import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000');
+                    const fullUrl = `${baseUrl}/api/pdf/public/${docData?.data?.document?._id}`;
+                    console.error('VITE_API_URL:', import.meta.env.VITE_API_URL);
                     console.error('Is DEV:', import.meta.env.DEV);
                     console.error('Base URL:', baseUrl);
-                    console.error('Original filePath:', docData?.data?.document?.filePath);
+                    console.error('Document ID:', docData?.data?.document?._id);
                     console.error('Attempted URL:', fullUrl);
                     toast.error('Failed to load PDF document');
                   }}
@@ -1059,8 +1059,8 @@ export default function SignDocument() {
                 <div className="w-[900px] h-[1100px] bg-white flex items-center justify-center text-center p-8">
                   <div>
                     <p className="text-red-600 mb-4">PDF document not available</p>
-                    <p className="text-gray-600 mb-2">Document path: {docData?.data?.document?.filePath || 'Not found'}</p>
-                    <p className="text-gray-600">Please check if the file exists or contact support.</p>
+                    <p className="text-gray-600 mb-2">Document ID: {docData?.data?.document?._id || 'Not found'}</p>
+                    <p className="text-gray-600">Please check if the document exists or contact support.</p>
                   </div>
                 </div>
               )}

@@ -7,13 +7,15 @@ export interface IDocument extends Document {
   description?: string;
   fileName: string;
   originalName: string;
-  filePath: string;
+  filePath: string; // Keep for backward compatibility
   fileSize: number;
   mimeType: string;
   pageCount: number;
+  pdfContent?: string; // Base64 encoded PDF content
   owner: mongoose.Types.ObjectId;
   status: DocumentStatus;
   signedFilePath?: string;
+  signedPdfContent?: string; // Base64 encoded signed PDF content
   isDeleted: boolean;
   deletedAt?: Date;
   createdAt: Date;
@@ -58,6 +60,10 @@ const DocumentSchema: Schema = new Schema(
       type: Number,
       default: 1
     },
+    pdfContent: {
+      type: String, // Base64 encoded PDF content
+      default: null
+    },
     owner: {
       type: Schema.Types.ObjectId,
       ref: 'User',
@@ -71,6 +77,10 @@ const DocumentSchema: Schema = new Schema(
     },
     signedFilePath: {
       type: String,
+      default: null
+    },
+    signedPdfContent: {
+      type: String, // Base64 encoded signed PDF content
       default: null
     },
     isDeleted: {
