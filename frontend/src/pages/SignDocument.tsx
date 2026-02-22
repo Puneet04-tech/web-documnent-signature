@@ -1030,18 +1030,18 @@ export default function SignDocument() {
                 display: 'inline-block'
               }}
             >
-              {docData?.data?.document?._id ? (
+              {docData?.data?.document?.fileName ? (
                 <PDFDoc
-                  file={`${import.meta.env.DEV ? 'http://localhost:5000' : (import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000')}/api/pdf/public/${docData?.data?.document?._id}`}
+                  file={`${import.meta.env.DEV ? 'http://localhost:5000' : (import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000')}/api/pdf/file/${docData?.data?.document?.fileName}`}
                   onLoadSuccess={onDocumentLoadSuccess}
                   onSourceError={(error: Error) => {
                     console.error('PDF loading error:', error);
                     const baseUrl = import.meta.env.DEV ? 'http://localhost:5000' : (import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000');
-                    const fullUrl = `${baseUrl}/api/pdf/public/${docData?.data?.document?._id}`;
+                    const fullUrl = `${baseUrl}/api/pdf/file/${docData?.data?.document?.fileName}`;
                     console.error('VITE_API_URL:', import.meta.env.VITE_API_URL);
                     console.error('Is DEV:', import.meta.env.DEV);
                     console.error('Base URL:', baseUrl);
-                    console.error('Document ID:', docData?.data?.document?._id);
+                    console.error('Document fileName:', docData?.data?.document?.fileName);
                     console.error('Attempted URL:', fullUrl);
                     toast.error('Failed to load PDF document');
                   }}
@@ -1059,8 +1059,8 @@ export default function SignDocument() {
                 <div className="w-[900px] h-[1100px] bg-white flex items-center justify-center text-center p-8">
                   <div>
                     <p className="text-red-600 mb-4">PDF document not available</p>
-                    <p className="text-gray-600 mb-2">Document ID: {docData?.data?.document?._id || 'Not found'}</p>
-                    <p className="text-gray-600">Please check if the document exists or contact support.</p>
+                    <p className="text-gray-600 mb-2">Document fileName: {docData?.data?.document?.fileName || 'Not found'}</p>
+                    <p className="text-gray-600">Please check if document exists or contact support.</p>
                   </div>
                 </div>
               )}

@@ -3,6 +3,8 @@ import { pdfController } from '../controllers/pdfController';
 import { authMiddleware } from '../middleware/auth';
 import { migrateExistingDocuments } from '../scripts/migrateDocuments';
 import { Document } from '../models';
+import fs from 'fs/promises';
+import path from 'path';
 
 const router = Router();
 
@@ -20,6 +22,35 @@ router.post('/migrate', async (req, res) => {
     res.json({ success: true, message: 'Migration completed' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Migration failed' });
+  }
+});
+
+// Fallback: Serve PDF directly from file system
+router.get('/file/:filename', async (req, res) => {
+  try {
+    const { filename } = req.params;
+    const filePath = path.join('uploads', filename);
+    
+    // Check if file exists
+    try {
+      await fs.access(filePath);
+    } catch {
+      return res.status(404).json({ success: false, message: 'File not found' });
+    }
+    
+    // Read file
+    const fileBuffer = await fs.readFile(filePath);
+    
+    // Set headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Length', fileBuffer.length);
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    
+    // Send file
+    res.send(fileBuffer);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'File serving failed', error: error.message });
   }
 });
 
