@@ -76,23 +76,35 @@ export const serveSignedPdfFromMongo = asyncHandler(async (req: AuthRequest, res
 });
 
 // Public PDF serving (for signing portal - no auth required)
-export const servePublicPdfFromMongo = asyncHandler(async (req: AuthRequest, res: Response) => {
+export const servePublicPdfFromMongo = asyncHandler(async (req: any, res: Response) => {
   const { documentId } = req.params;
+  
+  console.log('Public PDF request for document ID:', documentId);
 
   // Find document (no auth check for public access)
   const document = await Document.findById(documentId);
+  
+  console.log('Document found:', !!document);
+  if (document) {
+    console.log('Document has pdfContent:', !!document.pdfContent);
+    console.log('Document originalName:', document.originalName);
+  }
 
   if (!document) {
+    console.log('Document not found, throwing 404');
     throw new AppError('Document not found', 404);
   }
 
   // Check if document has PDF content
   if (!document.pdfContent) {
+    console.log('PDF content not found, throwing 404');
     throw new AppError('PDF content not found', 404);
   }
 
   // Convert base64 to buffer
   const pdfBuffer = Buffer.from(document.pdfContent, 'base64');
+  
+  console.log('PDF buffer created, size:', pdfBuffer.length);
 
   // Set appropriate headers
   res.setHeader('Content-Type', 'application/pdf');

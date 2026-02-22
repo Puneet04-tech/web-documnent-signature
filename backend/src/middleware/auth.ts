@@ -57,17 +57,23 @@ export const authMiddleware = async (
     req.user = { ...decoded, _id: decoded.userId, name: decoded.name, email: decoded.email };
     
     console.log('req.user set:', {
-      reqUser: req.user,
-      reqUserId: req.user._id,
-      reqUserEmail: req.user.email
+      userId: req.user._id,
+      email: req.user.email,
+      name: req.user.name
     });
+    
     next();
-  } catch (error) {
-    if (error instanceof Error && error.name === 'TokenExpiredError') {
+  } catch (error: any) {
+    console.error('Auth middleware error:', error);
+    
+    if (error.name === 'TokenExpiredError') {
       res.status(401).json({ success: false, message: 'Token expired' });
-      return;
+    } else if (error.name === 'JsonWebTokenError') {
+      res.status(401).json({ success: false, message: 'Invalid token' });
+    } else {
+      res.status(401).json({ success: false, message: 'Authentication failed' });
     }
-    res.status(401).json({ success: false, message: 'Invalid token' });
+    return;
   }
 };
 
