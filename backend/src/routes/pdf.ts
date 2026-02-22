@@ -23,6 +23,37 @@ router.post('/migrate', async (req, res) => {
   }
 });
 
+// Test endpoint to verify routes are working
+router.get('/test', (req, res) => {
+  res.json({ 
+    success: true, 
+    message: 'PDF routes are working',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// List all documents endpoint
+router.get('/list', async (req, res) => {
+  try {
+    const documents = await Document.find({}).select('_id title originalName hasPdfContent pdfContentLength');
+    const docList = documents.map(doc => ({
+      _id: doc._id,
+      title: doc.title,
+      originalName: doc.originalName,
+      hasPdfContent: !!doc.pdfContent,
+      pdfContentLength: doc.pdfContent?.length || 0
+    }));
+    
+    res.json({
+      success: true,
+      data: docList,
+      count: docList.length
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'List failed', error: error.message });
+  }
+});
+
 // Debug endpoint to check document content
 router.get('/debug/:documentId', async (req, res) => {
   try {
