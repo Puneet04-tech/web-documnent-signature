@@ -48,8 +48,8 @@ export const getDocumentAnalytics = asyncHandler(async (req: AuthRequest, res: R
   // Calculate analytics
   const totalSigners = signingRequests.reduce((acc, sr) => acc + sr.signers.length, 0) + recipients.length;
   const completedSigners = signingRequests.reduce((acc, sr) => 
-    acc + sr.signers.filter(s => s.status === 'completed').length, 0) + 
-    recipients.filter(r => r.status === 'signed').length;
+    acc + sr.signers.filter((s: any) => s.status === 'signed').length, 0) + 
+    recipients.filter((r: any) => r.status === 'signed').length;
   const pendingSigners = totalSigners - completedSigners;
 
   // Generate daily data for charts
@@ -63,8 +63,8 @@ export const getDocumentAnalytics = asyncHandler(async (req: AuthRequest, res: R
     ).length;
     
     const dailyCompleted = signingRequests.filter(sr => 
-      sr.signers.some(s => s.status === 'completed' && 
-        s.updatedAt >= date && s.updatedAt < nextDate)
+      sr.signers.some((s: any) => s.status === 'signed' && 
+        s.signedAt >= date && s.signedAt < nextDate)
     ).length;
 
     dailyData.push({
@@ -130,7 +130,7 @@ export const getUserAnalytics = asyncHandler(async (req: AuthRequest, res: Respo
   const pendingDocuments = documents.filter(d => d.status === 'pending').length;
   const totalRequests = signingRequests.length;
   const completedRequests = signingRequests.filter(sr => 
-    sr.status === 'completed' || sr.signers.every(s => s.status === 'completed')
+    sr.status === 'completed' || sr.signers.every((s: any) => s.status === 'signed')
   ).length;
 
   res.json({
@@ -153,15 +153,15 @@ export const getUserAnalytics = asyncHandler(async (req: AuthRequest, res: Respo
 // Helper function to calculate average completion time
 function calculateAverageCompletionTime(signingRequests: any[]): number {
   const completedRequests = signingRequests.filter(sr => 
-    sr.signers.some(s => s.status === 'completed')
+    sr.signers.some((s: any) => s.status === 'signed')
   );
 
   if (completedRequests.length === 0) return 0;
 
   const totalTime = completedRequests.reduce((acc, sr) => {
-    const firstSigner = sr.signers.find(s => s.status === 'completed');
-    if (firstSigner && firstSigner.updatedAt) {
-      return acc + (firstSigner.updatedAt.getTime() - sr.createdAt.getTime());
+    const firstSigner = sr.signers.find((s: any) => s.status === 'signed');
+    if (firstSigner && firstSigner.signedAt) {
+      return acc + (firstSigner.signedAt.getTime() - sr.createdAt.getTime());
     }
     return acc;
   }, 0);
