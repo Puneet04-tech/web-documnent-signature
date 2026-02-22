@@ -20,6 +20,7 @@ import documentRecipientRoutes from './routes/documentRecipients';
 import finalizeRoutes from './routes/finalize';
 import templateRoutes from './routes/templates';
 import groupSigningRoutes from './routes/groupSigning';
+import analyticsRoutes from './routes/analytics';
 
 // Create Express app
 const app: Application = express();
@@ -73,6 +74,7 @@ app.use('/api/document-recipients', documentRecipientRoutes);
 app.use('/api/finalize', finalizeRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/groups', groupSigningRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // 404 handler
 app.use((_req: Request, _res: Response, next: NextFunction) => {
