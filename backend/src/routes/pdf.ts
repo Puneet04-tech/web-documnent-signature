@@ -25,21 +25,78 @@ router.post('/migrate', async (req, res) => {
   }
 });
 
+// List files in uploads directory
+router.get('/files', async (req, res) => {
+  try {
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    console.log('Checking uploads directory:', uploadsDir);
+    
+    const files = await fs.readdir(uploadsDir);
+    const fileStats = await Promise.all(
+      files.map(async (file) => {
+        const filePath = path.join(uploadsDir, file);
+        const stats = await fs.stat(filePath);
+        return {
+          name: file,
+          size: stats.size,
+          created: stats.birthtime,
+          modified: stats.mtime
+        };
+      })
+    );
+    
+    res.json({
+      success: true,
+      data: {
+        uploadsDir,
+        files: fileStats,
+        count: files.length
+      }
+    });
+  } catch (error: any) {
+    console.error('Error listing uploads:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to list files', 
+      error: error.message 
+    });
+  }
+});
+
 // Fallback: Serve PDF directly from file system
 router.get('/file/:filename', async (req, res) => {
   try {
     const { filename } = req.params;
     const filePath = path.join('uploads', filename);
     
+    console.log('PDF file request:', {
+      filename,
+      filePath,
+      cwd: process.cwd(),
+      uploadsPath: path.join(process.cwd(), 'uploads')
+    });
+    
     // Check if file exists
     try {
       await fs.access(filePath);
-    } catch {
-      return res.status(404).json({ success: false, message: 'File not found' });
+      console.log('File exists, reading...');
+    } catch (error) {
+      console.log('File does not exist:', filePath);
+      return res.status(404).json({ 
+        success: false, 
+        message: 'File not found',
+        debug: {
+          filename,
+          filePath,
+          cwd: process.cwd(),
+          uploadsPath: path.join(process.cwd(), 'uploads')
+        }
+      });
     }
     
     // Read file
     const fileBuffer = await fs.readFile(filePath);
+    console.log('File read successfully, size:', fileBuffer.length);
     
     // Set headers
     res.setHeader('Content-Type', 'application/pdf');
@@ -50,7 +107,12 @@ router.get('/file/:filename', async (req, res) => {
     // Send file
     res.send(fileBuffer);
   } catch (error: any) {
-    res.status(500).json({ success: false, message: 'File serving failed', error: error.message });
+    console.error('File serving error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'File serving failed', 
+      error: error.message 
+    });
   }
 });
 
