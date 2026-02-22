@@ -1032,11 +1032,15 @@ export default function SignDocument() {
             >
               {docData?.data?.document?.filePath && docData?.data?.document?.fileSize > 0 ? (
                 <PDFDoc
-                  file={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}/uploads/${docData?.data?.document?.filePath?.split('\\').pop()}`}
+                  file={`${import.meta.env.VITE_BASE_URL || 'http://localhost:5000'}/uploads/${docData?.data?.document?.filePath?.split('\\').pop()}`}
                   onLoadSuccess={onDocumentLoadSuccess}
                   onSourceError={(error: Error) => {
                     console.error('PDF loading error:', error);
-                    console.error('Attempted URL:', `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}/uploads/${docData?.data?.document?.filePath?.split('\\').pop()}`);
+                    const baseUrl = import.meta.env.VITE_BASE_URL || 'http://localhost:5000';
+                    const fullUrl = `${baseUrl}/uploads/${docData?.data?.document?.filePath?.split('\\').pop()}`;
+                    console.error('VITE_BASE_URL:', import.meta.env.VITE_BASE_URL);
+                    console.error('Base URL:', baseUrl);
+                    console.error('Attempted URL:', fullUrl);
                     toast.error('Failed to load PDF document');
                   }}
                   loading={<Loader2 className="h-8 w-8 animate-spin" />}
