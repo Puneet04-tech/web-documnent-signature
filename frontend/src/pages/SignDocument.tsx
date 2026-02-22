@@ -1032,8 +1032,13 @@ export default function SignDocument() {
             >
               {docData?.data?.document?.filePath && docData?.data?.document?.fileSize > 0 ? (
                 <PDFDoc
-                  file={`/uploads/${docData?.data?.document?.filePath?.split('\\').pop()}`}
+                  file={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/uploads/${docData?.data?.document?.filePath?.split('\\').pop()}`}
                   onLoadSuccess={onDocumentLoadSuccess}
+                  onSourceError={(error: Error) => {
+                    console.error('PDF loading error:', error);
+                    console.error('Attempted URL:', `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/uploads/${docData?.data?.document?.filePath?.split('\\').pop()}`);
+                    toast.error('Failed to load PDF document');
+                  }}
                   loading={<Loader2 className="h-8 w-8 animate-spin" />}
                 >
                   <PDFPage 
@@ -1047,12 +1052,9 @@ export default function SignDocument() {
               ) : (
                 <div className="w-[900px] h-[1100px] bg-white flex items-center justify-center text-center p-8">
                   <div>
-                    <p className="text-xl font-semibold text-gray-700 mb-4">No PDF uploaded for this document</p>
-                    <p className="text-sm text-gray-500 mb-6">This document was created from a template and doesn't have an attached PDF yet. Upload a file to enable signing and preview.</p>
-                    <div className="flex justify-center gap-3">
-                      <button onClick={() => navigate('/documents/upload')} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Upload File</button>
-                      <button onClick={() => navigate(`/documents/${documentId}/recipients`)} className="px-4 py-2 border rounded-lg">Manage Recipients</button>
-                    </div>
+                    <p className="text-red-600 mb-4">PDF document not available</p>
+                    <p className="text-gray-600 mb-2">Document path: {docData?.data?.document?.filePath || 'Not found'}</p>
+                    <p className="text-gray-600">Please check if the file exists or contact support.</p>
                   </div>
                 </div>
               )}
