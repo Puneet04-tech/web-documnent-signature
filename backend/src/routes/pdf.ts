@@ -25,6 +25,46 @@ router.post('/migrate', async (req, res) => {
   }
 });
 
+// Match documents with existing files
+router.get('/match', async (req, res) => {
+  try {
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    const files = await fs.readdir(uploadsDir);
+    
+    // Get all documents
+    const documents = await Document.find({}).select('_id fileName originalName title');
+    
+    // Match documents with files
+    const matches = documents.map(doc => {
+      const fileExists = files.includes(doc.fileName);
+      return {
+        documentId: doc._id,
+        title: doc.title,
+        fileName: doc.fileName,
+        originalName: doc.originalName,
+        fileExists,
+        fileUrl: fileExists ? `${req.protocol}://${req.get('host')}/uploads/${doc.fileName}` : null
+      };
+    });
+    
+    res.json({
+      success: true,
+      data: {
+        totalDocuments: documents.length,
+        totalFiles: files.length,
+        matches,
+        filesInUploads: files
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      message: 'Matching failed', 
+      error: error.message 
+    });
+  }
+});
+
 // List files in uploads directory
 router.get('/files', async (req, res) => {
   try {
