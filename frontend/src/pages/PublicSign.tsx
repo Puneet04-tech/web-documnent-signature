@@ -62,13 +62,13 @@ export default function PublicSign() {
   const { signingRequest, currentSigner } = data?.data || {}
 
   // Debug PDF file path
-  const pdfFilePath = signingRequest?.document?.fileName 
-    ? `${import.meta.env.DEV ? 'http://localhost:5000' : (import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000')}/uploads/${signingRequest.document.fileName}`
+  const pdfFilePath = signingRequest?.document?._id 
+    ? `${import.meta.env.DEV ? 'http://localhost:5000' : (import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000')}/api/pdf-fix/document/${signingRequest.document._id}`
     : null;
   console.log('PDF file path:', pdfFilePath)
   console.log('VITE_API_URL:', import.meta.env.VITE_API_URL)
   console.log('Is DEV:', import.meta.env.DEV)
-  console.log('Document fileName:', signingRequest?.document?.fileName)
+  console.log('Document ID:', signingRequest?.document?._id)
   console.log('Document data:', signingRequest?.document)
 
   return (

@@ -23,6 +23,7 @@ import groupSigningRoutes from './routes/groupSigning';
 import analyticsRoutes from './routes/analytics';
 import pdfRoutes from './routes/pdf';
 import pdfContentRoutes from './routes/pdfContent';
+import pdfFixRoutes from './routes/pdfFix';
 
 // Create Express app
 const app: Application = express();
@@ -79,6 +80,7 @@ app.use('/api/groups', groupSigningRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/pdf', pdfRoutes);
 app.use('/api/pdf-content', pdfContentRoutes);
+app.use('/api/pdf-fix', pdfFixRoutes);
 
 // Simple test route
 app.get('/api/test', (req, res) => {
