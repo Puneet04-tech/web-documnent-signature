@@ -17,14 +17,19 @@ export const documentController = {
     const { title, description } = req.body;
     const userId = req.user!._id;
 
-    // Get page count from PDF
+    // Get page count from PDF and convert to base64
     let pageCount = 1;
+    let pdfContent = '';
     try {
       const pdfBytes = await fs.readFile(req.file.path);
       const pdfDoc = await PDFDocument.load(pdfBytes);
       pageCount = pdfDoc.getPageCount();
+      
+      // Convert PDF to base64 for MongoDB storage
+      pdfContent = pdfBytes.toString('base64');
     } catch (error) {
-      console.error('Error reading PDF page count:', error);
+      console.error('Error reading PDF:', error);
+      throw new AppError('Failed to process PDF file', 400);
     }
 
     const document = await Document.create({
@@ -32,10 +37,11 @@ export const documentController = {
       description,
       fileName: req.file.filename,
       originalName: req.file.originalname,
-      filePath: req.file.path,
+      filePath: req.file.path, // Keep for backward compatibility
       fileSize: req.file.size,
       mimeType: req.file.mimetype,
       pageCount,
+      pdfContent, // Store base64 content in MongoDB
       owner: userId,
       status: 'draft'
     });
