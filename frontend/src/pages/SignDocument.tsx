@@ -1032,13 +1032,14 @@ export default function SignDocument() {
             >
               {docData?.data?.document?.filePath && docData?.data?.document?.fileSize > 0 ? (
                 <PDFDoc
-                  file={`${import.meta.env.VITE_BASE_URL || 'http://localhost:5000'}/${docData?.data?.document?.filePath}`}
+                  file={`${import.meta.env.DEV ? 'http://localhost:5000' : (import.meta.env.VITE_BASE_URL || 'http://localhost:5000')}/${docData?.data?.document?.filePath}`}
                   onLoadSuccess={onDocumentLoadSuccess}
                   onSourceError={(error: Error) => {
                     console.error('PDF loading error:', error);
-                    const baseUrl = import.meta.env.VITE_BASE_URL || 'http://localhost:5000';
+                    const baseUrl = import.meta.env.DEV ? 'http://localhost:5000' : (import.meta.env.VITE_BASE_URL || 'http://localhost:5000');
                     const fullUrl = `${baseUrl}/${docData?.data?.document?.filePath}`;
                     console.error('VITE_BASE_URL:', import.meta.env.VITE_BASE_URL);
+                    console.error('Is DEV:', import.meta.env.DEV);
                     console.error('Base URL:', baseUrl);
                     console.error('Original filePath:', docData?.data?.document?.filePath);
                     console.error('Attempted URL:', fullUrl);

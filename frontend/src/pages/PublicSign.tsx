@@ -63,10 +63,11 @@ export default function PublicSign() {
 
   // Debug PDF file path
   const pdfFilePath = signingRequest?.document?.filePath 
-    ? `${import.meta.env.VITE_BASE_URL || 'http://localhost:5000'}/${signingRequest.document.filePath}`
+    ? `${import.meta.env.DEV ? 'http://localhost:5000' : (import.meta.env.VITE_BASE_URL || 'http://localhost:5000')}/${signingRequest.document.filePath}`
     : null;
   console.log('PDF file path:', pdfFilePath)
   console.log('VITE_BASE_URL:', import.meta.env.VITE_BASE_URL)
+  console.log('Is DEV:', import.meta.env.DEV)
   console.log('Original filePath:', signingRequest?.document?.filePath)
   console.log('Document data:', signingRequest?.document)
 

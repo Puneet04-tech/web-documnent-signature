@@ -4,7 +4,8 @@ import { ApiResponse, AuthResponse, User, Document, Signature, SignatureType, Si
 // Default to deployed backend on Render if VITE_API_URL is not provided
 // Some deploy dashboards accidentally append other flags (e.g. " NODE_ENV=production")
 // to env value; strip out anything after whitespace to avoid malformed URLs.
-const rawApiUrl = import.meta.env.VITE_API_URL || 'https://web-document-signature.onrender.com/api';
+const rawApiUrl = import.meta.env.VITE_API_URL || 
+  (import.meta.env.DEV ? 'http://localhost:5000/api' : 'https://web-document-signature.onrender.com/api');
 const API_URL = String(rawApiUrl).split(/\s+/)[0].trim();
 
 class ApiService {
