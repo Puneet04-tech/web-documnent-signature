@@ -106,6 +106,22 @@ app.get('/api/test', (req, res) => {
   });
 });
 
+// CORS debug route
+app.get('/api/cors-debug', (req, res) => {
+  res.json({ 
+    success: true, 
+    message: 'CORS Debug Info',
+    timestamp: new Date().toISOString(),
+    cors: {
+      origins: config.cors.origins,
+      requestOrigin: req.headers.origin,
+      requestReferer: req.headers.referer,
+      allowedOrigins: config.cors.origins,
+      isOriginAllowed: req.headers.origin ? config.cors.origins.includes(req.headers.origin) : 'No origin header'
+    }
+  });
+});
+
 // 404 handler
 app.use((_req: Request, _res: Response, next: NextFunction) => {
   next(new AppError('Route not found', 404));

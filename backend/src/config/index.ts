@@ -44,6 +44,9 @@ export const config = {
           'http://localhost:5174',
           'http://localhost:5175',
           // default for the Netlify frontend deployment
+          'https://web-document.netlify.app',
+          // explicit CORS origins for production
+          'https://web-document-signature.onrender.com',
           'https://web-document.netlify.app'
         ]
   }
