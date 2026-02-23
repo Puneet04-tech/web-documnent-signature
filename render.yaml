@@ -16,7 +16,7 @@ services:
       - key: JWT_SECRET
         value: your-jwt-secret-key
       - key: FRONTEND_URL
-        value: https://your-app-name.netlify.app
+        value: https://web-document.netlify.app
       - key: EMAIL_HOST
         value: smtp.gmail.com
       - key: EMAIL_PORT
