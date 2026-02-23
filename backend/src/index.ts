@@ -34,8 +34,25 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: config.cors.origins,
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is in allowed list
+    const allowedOrigins = config.cors.origins;
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    } else {
+      // Log the blocked origin for debugging
+      console.log('CORS blocked origin:', origin);
+      console.log('Allowed origins:', allowedOrigins);
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['X-Total-Count']
 }));
 
 // Rate limiting
@@ -81,6 +98,18 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/pdf', pdfRoutes);
 app.use('/api/pdf-content', pdfContentRoutes);
 app.use('/api/pdf-fix', pdfFixRoutes);
+
+// Health check endpoint
+app.get('/health', (_req: Request, res: Response) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    cors: {
+      origins: config.cors.origins,
+      message: 'CORS configuration loaded'
+    }
+  });
+});
 
 // Simple test route
 app.get('/api/test', (req, res) => {
